@@ -1,1 +1,0 @@
-ALTER TABLE projects ADD COLUMN issue_counter INTEGER NOT NULL DEFAULT 0;

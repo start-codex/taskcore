@@ -1,6 +1,0 @@
-ALTER TABLE issues DROP COLUMN IF EXISTS target_date;
-ALTER TABLE issues DROP COLUMN IF EXISTS start_date;
-ALTER TABLE issues DROP COLUMN IF EXISTS color;
-DROP INDEX IF EXISTS idx_issues_epic;
-ALTER TABLE issues DROP COLUMN IF EXISTS epic_id;
-ALTER TABLE issue_types DROP COLUMN IF EXISTS hierarchy_level;
