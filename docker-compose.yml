@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: taskcore-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-taskcore}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-taskcore}
+      POSTGRES_DB: ${DB_NAME:-taskcore}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - taskcore-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskcore} -d ${DB_NAME:-taskcore}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  taskcore-data:
