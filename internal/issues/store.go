@@ -11,6 +11,154 @@ import (
 
 const reorderOffset = 1000000
 
+const issueCols = `id, project_id, number, issue_type_id, status_id, parent_issue_id,
+	title, description, priority, assignee_id, reporter_id, due_date,
+	status_position, created_at, updated_at, archived_at`
+
+func createIssue(ctx context.Context, db *sqlx.DB, p CreateIssueParams) (Issue, error) {
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return Issue{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	var number int
+	if err := tx.QueryRowxContext(ctx,
+		`INSERT INTO project_issue_counters (project_id, last_number)
+		 VALUES ($1, 1)
+		 ON CONFLICT (project_id)
+		 DO UPDATE SET last_number = project_issue_counters.last_number + 1
+		 RETURNING last_number`,
+		p.ProjectID,
+	).Scan(&number); err != nil {
+		return Issue{}, fmt.Errorf("upsert issue counter: %w", err)
+	}
+
+	var parentIssueID *string
+	if p.ParentIssueID != "" {
+		parentIssueID = &p.ParentIssueID
+	}
+	var assigneeID *string
+	if p.AssigneeID != "" {
+		assigneeID = &p.AssigneeID
+	}
+
+	var out Issue
+	err = tx.QueryRowxContext(ctx,
+		`INSERT INTO issues (
+			project_id, number, issue_type_id, status_id, parent_issue_id,
+			title, description, priority, assignee_id, reporter_id, due_date,
+			status_position
+		) VALUES (
+			$1, $2, $3, $4, $5,
+			$6, $7, $8, $9, $10, $11,
+			(SELECT COALESCE(MAX(status_position), -1) + 1
+			 FROM issues
+			 WHERE project_id = $1 AND status_id = $4 AND archived_at IS NULL)
+		)
+		RETURNING `+issueCols,
+		p.ProjectID, number, p.IssueTypeID, p.StatusID, parentIssueID,
+		p.Title, p.Description, p.Priority, assigneeID, p.ReporterID, p.DueDate,
+	).StructScan(&out)
+	if err != nil {
+		return Issue{}, fmt.Errorf("insert issue: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Issue{}, fmt.Errorf("commit create issue: %w", err)
+	}
+	return out, nil
+}
+
+func getIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issue, error) {
+	var out Issue
+	err := db.GetContext(ctx, &out,
+		`SELECT `+issueCols+`
+		 FROM issues
+		 WHERE id = $1 AND project_id = $2`,
+		issueID, projectID,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Issue{}, ErrIssueNotFound
+		}
+		return Issue{}, fmt.Errorf("get issue: %w", err)
+	}
+	return out, nil
+}
+
+func listIssues(ctx context.Context, db *sqlx.DB, p ListIssuesParams) ([]Issue, error) {
+	query := `SELECT ` + issueCols + `
+		 FROM issues
+		 WHERE project_id = $1
+		   AND archived_at IS NULL`
+	args := []any{p.ProjectID}
+
+	if p.StatusID != "" {
+		args = append(args, p.StatusID)
+		query += fmt.Sprintf(" AND status_id = $%d", len(args))
+	}
+	if p.AssigneeID != "" {
+		args = append(args, p.AssigneeID)
+		query += fmt.Sprintf(" AND assignee_id = $%d", len(args))
+	}
+
+	query += ` ORDER BY status_id, status_position ASC`
+
+	var out []Issue
+	if err := db.SelectContext(ctx, &out, query, args...); err != nil {
+		return nil, fmt.Errorf("list issues: %w", err)
+	}
+	return out, nil
+}
+
+func updateIssue(ctx context.Context, db *sqlx.DB, p UpdateIssueParams) (Issue, error) {
+	var out Issue
+	err := db.QueryRowxContext(ctx,
+		`UPDATE issues
+		 SET title       = $1,
+		     description = $2,
+		     priority    = $3,
+		     assignee_id = $4,
+		     due_date    = $5
+		 WHERE id = $6
+		   AND project_id = $7
+		   AND archived_at IS NULL
+		 RETURNING `+issueCols,
+		p.Title, p.Description, p.Priority, p.AssigneeID, p.DueDate,
+		p.IssueID, p.ProjectID,
+	).StructScan(&out)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Issue{}, ErrIssueNotFound
+		}
+		return Issue{}, fmt.Errorf("update issue: %w", err)
+	}
+	return out, nil
+}
+
+func archiveIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) error {
+	res, err := db.ExecContext(ctx,
+		`UPDATE issues
+		 SET archived_at = NOW()
+		 WHERE id = $1
+		   AND project_id = $2
+		   AND archived_at IS NULL`,
+		issueID, projectID,
+	)
+	if err != nil {
+		return fmt.Errorf("archive issue: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("archive issue rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrIssueNotFound
+	}
+	return nil
+}
+
 type issuePosition struct {
 	StatusID       string `db:"status_id"`
 	StatusPosition int    `db:"status_position"`
