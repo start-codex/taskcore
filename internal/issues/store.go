@@ -410,10 +410,7 @@ func openGapInTargetStatus(ctx context.Context, tx *sqlx.Tx, projectID, statusID
 		   AND status_id = $3
 		   AND archived_at IS NULL
 		   AND status_position >= $4`,
-		reorderOffset,
-		projectID,
-		statusID,
-		targetPos,
+		reorderOffset, projectID, statusID, targetPos,
 	); err != nil {
 		return fmt.Errorf("phase 1 open gap: %w", err)
 	}
@@ -425,11 +422,8 @@ func openGapInTargetStatus(ctx context.Context, tx *sqlx.Tx, projectID, statusID
 		 WHERE project_id = $2
 		   AND status_id = $3
 		   AND archived_at IS NULL
-		   AND status_position >= $4 + $1`,
-		reorderOffset,
-		projectID,
-		statusID,
-		targetPos,
+		   AND status_position >= $4`,
+		reorderOffset, projectID, statusID, targetPos+reorderOffset,
 	); err != nil {
 		return fmt.Errorf("phase 2 open gap: %w", err)
 	}
@@ -469,13 +463,13 @@ func shiftUpRange(ctx context.Context, tx *sqlx.Tx, projectID, issueID, statusID
 		   AND status_id = $3
 		   AND archived_at IS NULL
 		   AND id <> $4
-		   AND status_position BETWEEN $5 + $1 AND $6 + $1`,
+		   AND status_position BETWEEN $5 AND $6`,
 		reorderOffset,
 		projectID,
 		statusID,
 		issueID,
-		startPos,
-		endPos,
+		startPos+reorderOffset,
+		endPos+reorderOffset,
 	); err != nil {
 		return fmt.Errorf("phase 2 shift up range: %w", err)
 	}
@@ -490,7 +484,7 @@ func shiftDownRange(ctx context.Context, tx *sqlx.Tx, projectID, issueID, status
 		return nil
 	}
 
-	args := []any{reorderOffset, projectID, statusID, issueID, startPos}
+	args1 := []any{reorderOffset, projectID, statusID, issueID, startPos}
 	phase1 := `UPDATE issues
 		 SET status_position = status_position + $1
 		 WHERE project_id = $2
@@ -498,24 +492,27 @@ func shiftDownRange(ctx context.Context, tx *sqlx.Tx, projectID, issueID, status
 		   AND archived_at IS NULL
 		   AND id <> $4
 		   AND status_position >= $5`
+
+	args2 := []any{reorderOffset, projectID, statusID, issueID, startPos + reorderOffset}
 	phase2 := `UPDATE issues
 		 SET status_position = status_position - $1 - 1
 		 WHERE project_id = $2
 		   AND status_id = $3
 		   AND archived_at IS NULL
 		   AND id <> $4
-		   AND status_position >= $5 + $1`
+		   AND status_position >= $5`
 
 	if endPos >= 0 {
-		args = append(args, endPos)
+		args1 = append(args1, endPos)
 		phase1 += " AND status_position <= $6"
-		phase2 += " AND status_position <= $6 + $1"
+		args2 = append(args2, endPos+reorderOffset)
+		phase2 += " AND status_position <= $6"
 	}
 
-	if _, err := tx.ExecContext(ctx, phase1, args...); err != nil {
+	if _, err := tx.ExecContext(ctx, phase1, args1...); err != nil {
 		return fmt.Errorf("phase 1 shift down range: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, phase2, args...); err != nil {
+	if _, err := tx.ExecContext(ctx, phase2, args2...); err != nil {
 		return fmt.Errorf("phase 2 shift down range: %w", err)
 	}
 	return nil

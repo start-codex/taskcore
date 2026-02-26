@@ -2,6 +2,7 @@ package issues
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -24,6 +25,7 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrInvalidPriority):
 		respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 	default:
+		slog.Error("issues handler error", "error", err)
 		respond.Error(w, http.StatusInternalServerError, "internal server error")
 	}
 }

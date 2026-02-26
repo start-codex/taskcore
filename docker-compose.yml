@@ -16,19 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  migrate:
-    image: migrate/migrate
-    volumes:
-      - ./migrations:/migrations
-    command:
-      - "-path=/migrations"
-      - "-database=postgres://${DB_USER:-taskcore}:${DB_PASSWORD:-taskcore}@db:5432/${DB_NAME:-taskcore}?sslmode=disable"
-      - "up"
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
-
   app:
     build: .
     container_name: taskcore-app
@@ -38,8 +25,8 @@ services:
       DATABASE_URL: postgres://${DB_USER:-taskcore}:${DB_PASSWORD:-taskcore}@db:5432/${DB_NAME:-taskcore}?sslmode=disable
       PORT: 8080
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

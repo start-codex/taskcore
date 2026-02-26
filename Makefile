@@ -55,11 +55,11 @@ migrate-create: ## Create new migration (usage: make migrate-create NAME=create_
 # Development
 # =============================================================================
 
-dev-setup: db-up migrate-up ## Setup development environment
-	@echo "Development environment ready!"
+dev-setup: db-up ## Start database (app runs migrations on startup)
+	@echo "Database ready. Run the app to apply migrations."
 
-dev-reset: db-reset migrate-up ## Reset and re-run all migrations
-	@echo "Database reset complete!"
+dev-reset: db-reset ## Reset database (app will re-apply migrations on next start)
+	@echo "Database reset complete."
 
 # =============================================================================
 # App (Docker)

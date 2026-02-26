@@ -13,9 +13,12 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/start-codex/taskcode/internal/boards"
 	"github.com/start-codex/taskcode/internal/issues"
+	"github.com/start-codex/taskcode/internal/issuetypes"
 	"github.com/start-codex/taskcode/internal/projects"
+	"github.com/start-codex/taskcode/internal/statuses"
 	"github.com/start-codex/taskcode/internal/users"
 	"github.com/start-codex/taskcode/internal/workspaces"
+	"github.com/start-codex/taskcode/migrations"
 )
 
 func main() {
@@ -43,10 +46,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := migrations.Up(ctx, db.DB); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("migrations applied")
+
 	mux := http.NewServeMux()
 	users.RegisterRoutes(mux, db)
 	workspaces.RegisterRoutes(mux, db)
 	projects.RegisterRoutes(mux, db)
+	statuses.RegisterRoutes(mux, db)
+	issuetypes.RegisterRoutes(mux, db)
 	boards.RegisterRoutes(mux, db)
 	issues.RegisterRoutes(mux, db)
 
