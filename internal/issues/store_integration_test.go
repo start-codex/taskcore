@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -438,5 +439,350 @@ func assertContainsSameIDs(t *testing.T, got []orderedIssue, wantIDs []string) {
 	}
 	if len(wantSet) > 0 {
 		t.Fatalf("missing %d issue ids after move", len(wantSet))
+	}
+}
+
+func TestCreateIssue(t *testing.T) {
+	db := openTestDB(t)
+	ensureSchema(t, db)
+
+	tests := []struct {
+		name    string
+		arrange func(*testing.T, *sqlx.DB, projectSeed) (CreateIssueParams, func(*testing.T))
+		wantErr error
+	}{
+		{
+			name: "creates issue with auto number and position",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
+				p := CreateIssueParams{
+					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
+					StatusID: seed.statusTodoID, Title: "First issue",
+					ReporterID: seed.reporterID, Priority: "medium",
+				}
+				return p, func(t *testing.T) {}
+			},
+		},
+		{
+			name: "numbers increment per project",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
+				p := CreateIssueParams{
+					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
+					StatusID: seed.statusTodoID, Title: "Issue",
+					ReporterID: seed.reporterID, Priority: "medium",
+				}
+				first, err := CreateIssue(context.Background(), db, p)
+				if err != nil {
+					t.Fatalf("create first: %v", err)
+				}
+				return p, func(t *testing.T) {
+					second, err := CreateIssue(context.Background(), db, p)
+					if err != nil {
+						t.Fatalf("create second: %v", err)
+					}
+					if second.Number != first.Number+1 {
+						t.Fatalf("number: got %d, want %d", second.Number, first.Number+1)
+					}
+					if second.StatusPosition != first.StatusPosition+1 {
+						t.Fatalf("status_position: got %d, want %d", second.StatusPosition, first.StatusPosition+1)
+					}
+				}
+			},
+		},
+		{
+			name: "empty priority defaults to medium",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
+				p := CreateIssueParams{
+					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
+					StatusID: seed.statusTodoID, Title: "Issue",
+					ReporterID: seed.reporterID,
+				}
+				return p, func(t *testing.T) {}
+			},
+		},
+		{
+			name: "creates issue with optional fields",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
+				due := time.Now().Add(48 * time.Hour)
+				p := CreateIssueParams{
+					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
+					StatusID: seed.statusTodoID, Title: "Issue with extras",
+					Description: "details", ReporterID: seed.reporterID,
+					AssigneeID: seed.reporterID, Priority: "high",
+					DueDate: &due,
+				}
+				return p, func(t *testing.T) {}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seed := seedProject(t, db)
+			p, check := tt.arrange(t, db, seed)
+			got, err := CreateIssue(context.Background(), db, p)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("CreateIssue() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil {
+				if got.ID == "" {
+					t.Fatal("expected non-empty id")
+				}
+				if got.Number <= 0 {
+					t.Fatalf("number: got %d, want > 0", got.Number)
+				}
+				if got.StatusPosition < 0 {
+					t.Fatalf("status_position: got %d, want >= 0", got.StatusPosition)
+				}
+			}
+			if check != nil {
+				check(t)
+			}
+		})
+	}
+}
+
+func TestGetIssue(t *testing.T) {
+	db := openTestDB(t)
+	ensureSchema(t, db)
+
+	tests := []struct {
+		name    string
+		arrange func(*testing.T, *sqlx.DB, projectSeed) (projectID, issueID string, check func(*testing.T))
+		wantErr error
+	}{
+		{
+			name: "returns existing issue",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (string, string, func(*testing.T)) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				return seed.projectID, id, func(t *testing.T) {}
+			},
+		},
+		{
+			name:    "not found",
+			wantErr: ErrIssueNotFound,
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (string, string, func(*testing.T)) {
+				return seed.projectID, "00000000-0000-0000-0000-000000000000", nil
+			},
+		},
+		{
+			name:    "wrong project returns not found",
+			wantErr: ErrIssueNotFound,
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (string, string, func(*testing.T)) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				return "00000000-0000-0000-0000-000000000000", id, nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seed := seedProject(t, db)
+			projID, issueID, check := tt.arrange(t, db, seed)
+			got, err := GetIssue(context.Background(), db, projID, issueID)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("GetIssue() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil && got.ID != issueID {
+				t.Fatalf("id: got %q, want %q", got.ID, issueID)
+			}
+			if check != nil {
+				check(t)
+			}
+		})
+	}
+}
+
+func TestListIssues(t *testing.T) {
+	db := openTestDB(t)
+	ensureSchema(t, db)
+
+	tests := []struct {
+		name    string
+		arrange func(*testing.T, *sqlx.DB, projectSeed) (ListIssuesParams, func(*testing.T, []Issue))
+		wantErr error
+	}{
+		{
+			name: "returns active issues",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (ListIssuesParams, func(*testing.T, []Issue)) {
+				a := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				insertIssue(t, db, seed, issueSeed{number: 2, title: "B", statusID: seed.statusTodoID, statusPosition: 1})
+				if err := ArchiveIssue(context.Background(), db, seed.projectID, a); err != nil {
+					t.Fatalf("archive issue: %v", err)
+				}
+				return ListIssuesParams{ProjectID: seed.projectID}, func(t *testing.T, got []Issue) {
+					if len(got) != 1 {
+						t.Fatalf("len: got %d, want 1", len(got))
+					}
+				}
+			},
+		},
+		{
+			name: "filter by status",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (ListIssuesParams, func(*testing.T, []Issue)) {
+				insertIssue(t, db, seed, issueSeed{number: 1, title: "Todo", statusID: seed.statusTodoID, statusPosition: 0})
+				insertIssue(t, db, seed, issueSeed{number: 2, title: "Doing", statusID: seed.statusDoingID, statusPosition: 0})
+				return ListIssuesParams{ProjectID: seed.projectID, StatusID: seed.statusTodoID}, func(t *testing.T, got []Issue) {
+					if len(got) != 1 {
+						t.Fatalf("len: got %d, want 1", len(got))
+					}
+					if got[0].StatusID != seed.statusTodoID {
+						t.Fatalf("status_id: got %q, want %q", got[0].StatusID, seed.statusTodoID)
+					}
+				}
+			},
+		},
+		{
+			name: "empty project returns empty slice",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (ListIssuesParams, func(*testing.T, []Issue)) {
+				return ListIssuesParams{ProjectID: seed.projectID}, func(t *testing.T, got []Issue) {
+					if len(got) != 0 {
+						t.Fatalf("len: got %d, want 0", len(got))
+					}
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seed := seedProject(t, db)
+			p, check := tt.arrange(t, db, seed)
+			got, err := ListIssues(context.Background(), db, p)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("ListIssues() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if check != nil {
+				check(t, got)
+			}
+		})
+	}
+}
+
+func TestUpdateIssue(t *testing.T) {
+	db := openTestDB(t)
+	ensureSchema(t, db)
+
+	tests := []struct {
+		name    string
+		arrange func(*testing.T, *sqlx.DB, projectSeed) (UpdateIssueParams, func(*testing.T))
+		wantErr error
+	}{
+		{
+			name: "updates title and priority",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "Old", statusID: seed.statusTodoID, statusPosition: 0})
+				p := UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "New", Priority: "high"}
+				return p, func(t *testing.T) {}
+			},
+		},
+		{
+			name: "clears assignee when nil",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				p := UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "A", Priority: "medium", AssigneeID: nil}
+				return p, func(t *testing.T) {}
+			},
+		},
+		{
+			name:    "not found",
+			wantErr: ErrIssueNotFound,
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
+				p := UpdateIssueParams{
+					IssueID:   "00000000-0000-0000-0000-000000000000",
+					ProjectID: seed.projectID, Title: "X", Priority: "low",
+				}
+				return p, nil
+			},
+		},
+		{
+			name:    "archived issue returns not found",
+			wantErr: ErrIssueNotFound,
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				if err := ArchiveIssue(context.Background(), db, seed.projectID, id); err != nil {
+					t.Fatalf("archive: %v", err)
+				}
+				return UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "X", Priority: "low"}, nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seed := seedProject(t, db)
+			p, check := tt.arrange(t, db, seed)
+			got, err := UpdateIssue(context.Background(), db, p)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("UpdateIssue() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil {
+				if got.Title != p.Title {
+					t.Fatalf("title: got %q, want %q", got.Title, p.Title)
+				}
+				if got.Priority != p.Priority {
+					t.Fatalf("priority: got %q, want %q", got.Priority, p.Priority)
+				}
+			}
+			if check != nil {
+				check(t)
+			}
+		})
+	}
+}
+
+func TestArchiveIssue(t *testing.T) {
+	db := openTestDB(t)
+	ensureSchema(t, db)
+
+	tests := []struct {
+		name    string
+		arrange func(*testing.T, *sqlx.DB, projectSeed) (projectID, issueID string)
+		wantErr error
+	}{
+		{
+			name: "archives active issue",
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (string, string) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				return seed.projectID, id
+			},
+		},
+		{
+			name:    "not found",
+			wantErr: ErrIssueNotFound,
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (string, string) {
+				return seed.projectID, "00000000-0000-0000-0000-000000000000"
+			},
+		},
+		{
+			name:    "already archived",
+			wantErr: ErrIssueNotFound,
+			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (string, string) {
+				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
+				if err := ArchiveIssue(context.Background(), db, seed.projectID, id); err != nil {
+					t.Fatalf("first archive: %v", err)
+				}
+				return seed.projectID, id
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			seed := seedProject(t, db)
+			projID, issueID := tt.arrange(t, db, seed)
+			err := ArchiveIssue(context.Background(), db, projID, issueID)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("ArchiveIssue() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil {
+				got, err := GetIssue(context.Background(), db, projID, issueID)
+				if err != nil {
+					t.Fatalf("get archived issue: %v", err)
+				}
+				if got.ArchivedAt == nil {
+					t.Fatal("expected archived_at to be set")
+				}
+			}
+		})
 	}
 }

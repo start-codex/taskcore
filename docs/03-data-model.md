@@ -137,7 +137,7 @@ Clave pública recomendada en UI/API: `PROJECT_KEY-NUMBER` (ej: `ENG-123`).
 ## Implementación SQL
 
 - Fuente de verdad: migraciones SQL en `migrations/`.
-- Acceso desde Go: `database/sql` + `sqlx` con repositorios por módulo.
+- Acceso desde Go: `database/sql` + `sqlx` con funciones SQL privadas por paquete de dominio.
 - Evitar ORM pesado para mantener control y rendimiento.
 
 ## Generación de `Issue.number`
