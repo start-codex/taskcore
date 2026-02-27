@@ -45,14 +45,14 @@ type CreateBoardParams struct {
 	FilterQuery string
 }
 
-func (p CreateBoardParams) Validate() error {
-	if p.ProjectID == "" {
+func (params CreateBoardParams) Validate() error {
+	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
-	if p.Name == "" {
+	if params.Name == "" {
 		return errors.New("name is required")
 	}
-	if !validBoardTypes[p.Type] {
+	if !validBoardTypes[params.Type] {
 		return errors.New("type must be 'kanban' or 'scrum'")
 	}
 	return nil
@@ -63,24 +63,24 @@ type AddColumnParams struct {
 	Name    string
 }
 
-func (p AddColumnParams) Validate() error {
-	if p.BoardID == "" {
+func (params AddColumnParams) Validate() error {
+	if params.BoardID == "" {
 		return errors.New("board_id is required")
 	}
-	if p.Name == "" {
+	if params.Name == "" {
 		return errors.New("name is required")
 	}
 	return nil
 }
 
-func CreateBoard(ctx context.Context, db *sqlx.DB, p CreateBoardParams) (Board, error) {
+func CreateBoard(ctx context.Context, db *sqlx.DB, params CreateBoardParams) (Board, error) {
 	if db == nil {
 		return Board{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return Board{}, err
 	}
-	return createBoard(ctx, db, p)
+	return createBoard(ctx, db, params)
 }
 
 func GetBoard(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
@@ -113,14 +113,14 @@ func ArchiveBoard(ctx context.Context, db *sqlx.DB, id string) error {
 	return archiveBoard(ctx, db, id)
 }
 
-func AddColumn(ctx context.Context, db *sqlx.DB, p AddColumnParams) (BoardColumn, error) {
+func AddColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (BoardColumn, error) {
 	if db == nil {
 		return BoardColumn{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return BoardColumn{}, err
 	}
-	return addColumn(ctx, db, p)
+	return addColumn(ctx, db, params)
 }
 
 func ListColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]BoardColumn, error) {

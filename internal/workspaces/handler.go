@@ -6,7 +6,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/taskcode/internal/respond"
-	"github.com/start-codex/taskcode/internal/users"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -21,9 +20,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, ErrWorkspaceNotFound),
-		errors.Is(err, users.ErrUserNotFound),
-		errors.Is(err, users.ErrMemberNotFound):
+	case errors.Is(err, ErrWorkspaceNotFound), errors.Is(err, ErrMemberNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateSlug):
 		respond.Error(w, http.StatusConflict, err.Error())
@@ -42,12 +39,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateWorkspaceParams{Name: body.Name, Slug: body.Slug}
-		if err := p.Validate(); err != nil {
+		params := CreateWorkspaceParams{Name: body.Name, Slug: body.Slug}
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		ws, err := CreateWorkspace(r.Context(), db, p)
+		ws, err := CreateWorkspace(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -79,7 +76,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 
 func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		members, err := users.ListWorkspaceMembers(r.Context(), db, r.PathValue("workspaceID"))
+		members, err := ListMembers(r.Context(), db, r.PathValue("workspaceID"))
 		if err != nil {
 			fail(w, err)
 			return
@@ -98,21 +95,21 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := users.AddWorkspaceMemberParams{
+		params := AddMemberParams{
 			WorkspaceID: r.PathValue("workspaceID"),
 			UserID:      body.UserID,
 			Role:        body.Role,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		m, err := users.AddWorkspaceMember(r.Context(), db, p)
+		member, err := AddMember(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusCreated, m)
+		respond.JSON(w, http.StatusCreated, member)
 	}
 }
 
@@ -125,27 +122,27 @@ func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := users.UpdateWorkspaceMemberRoleParams{
+		params := UpdateMemberRoleParams{
 			WorkspaceID: r.PathValue("workspaceID"),
 			UserID:      r.PathValue("userID"),
 			Role:        body.Role,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		m, err := users.UpdateWorkspaceMemberRole(r.Context(), db, p)
+		member, err := UpdateMemberRole(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusOK, m)
+		respond.JSON(w, http.StatusOK, member)
 	}
 }
 
 func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := users.RemoveWorkspaceMember(r.Context(), db, r.PathValue("workspaceID"), r.PathValue("userID"))
+		err := RemoveMember(r.Context(), db, r.PathValue("workspaceID"), r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return

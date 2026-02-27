@@ -38,16 +38,16 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateStatusParams{
+		params := CreateStatusParams{
 			ProjectID: r.PathValue("projectID"),
 			Name:      body.Name,
 			Category:  body.Category,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		s, err := CreateStatus(r.Context(), db, p)
+		s, err := CreateStatus(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -77,17 +77,17 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := UpdateStatusParams{
+		params := UpdateStatusParams{
 			StatusID:  r.PathValue("statusID"),
 			ProjectID: r.PathValue("projectID"),
 			Name:      body.Name,
 			Category:  body.Category,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		s, err := UpdateStatus(r.Context(), db, p)
+		s, err := UpdateStatus(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return

@@ -21,9 +21,14 @@ const post = <T>(path: string, body: unknown) => request<T>('POST', path, body);
 const put = <T>(path: string, body: unknown) => request<T>('PUT', path, body);
 const del = (path: string) => request<void>('DELETE', path);
 
+// --- Auth ---
+export const auth = {
+	login: (body: { email: string; password: string }) => post<User>('/auth/login', body)
+};
+
 // --- Users ---
 export const users = {
-	create: (body: { email: string; name: string }) => post<User>('/users', body),
+	create: (body: { email: string; name: string; password: string }) => post<User>('/users', body),
 	get: (userID: string) => get<User>(`/users/${userID}`)
 };
 

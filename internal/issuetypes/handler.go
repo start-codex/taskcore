@@ -38,17 +38,17 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateIssueTypeParams{
+		params := CreateIssueTypeParams{
 			ProjectID: r.PathValue("projectID"),
 			Name:      body.Name,
 			Icon:      body.Icon,
 			Level:     body.Level,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		it, err := CreateIssueType(r.Context(), db, p)
+		it, err := CreateIssueType(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return

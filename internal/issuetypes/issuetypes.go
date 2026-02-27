@@ -31,27 +31,27 @@ type CreateIssueTypeParams struct {
 	Level     int
 }
 
-func (p CreateIssueTypeParams) Validate() error {
-	if p.ProjectID == "" {
+func (params CreateIssueTypeParams) Validate() error {
+	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
-	if p.Name == "" {
+	if params.Name == "" {
 		return errors.New("name is required")
 	}
-	if p.Level < 0 {
+	if params.Level < 0 {
 		return errors.New("level must be >= 0")
 	}
 	return nil
 }
 
-func CreateIssueType(ctx context.Context, db *sqlx.DB, p CreateIssueTypeParams) (IssueType, error) {
+func CreateIssueType(ctx context.Context, db *sqlx.DB, params CreateIssueTypeParams) (IssueType, error) {
 	if db == nil {
 		return IssueType{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return IssueType{}, err
 	}
-	return createIssueType(ctx, db, p)
+	return createIssueType(ctx, db, params)
 }
 
 func ListIssueTypes(ctx context.Context, db *sqlx.DB, projectID string) ([]IssueType, error) {

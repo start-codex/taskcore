@@ -15,7 +15,7 @@ const issueCols = `id, project_id, number, issue_type_id, status_id, parent_issu
 	title, description, priority, assignee_id, reporter_id, due_date,
 	status_position, created_at, updated_at, archived_at`
 
-func createIssue(ctx context.Context, db *sqlx.DB, p CreateIssueParams) (Issue, error) {
+func createIssue(ctx context.Context, db *sqlx.DB, params CreateIssueParams) (Issue, error) {
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return Issue{}, fmt.Errorf("begin tx: %w", err)
@@ -29,21 +29,21 @@ func createIssue(ctx context.Context, db *sqlx.DB, p CreateIssueParams) (Issue, 
 		 ON CONFLICT (project_id)
 		 DO UPDATE SET last_number = project_issue_counters.last_number + 1
 		 RETURNING last_number`,
-		p.ProjectID,
+		params.ProjectID,
 	).Scan(&number); err != nil {
 		return Issue{}, fmt.Errorf("upsert issue counter: %w", err)
 	}
 
 	var parentIssueID *string
-	if p.ParentIssueID != "" {
-		parentIssueID = &p.ParentIssueID
+	if params.ParentIssueID != "" {
+		parentIssueID = &params.ParentIssueID
 	}
 	var assigneeID *string
-	if p.AssigneeID != "" {
-		assigneeID = &p.AssigneeID
+	if params.AssigneeID != "" {
+		assigneeID = &params.AssigneeID
 	}
 
-	var out Issue
+	var issue Issue
 	err = tx.QueryRowxContext(ctx,
 		`INSERT INTO issues (
 			project_id, number, issue_type_id, status_id, parent_issue_id,
@@ -57,9 +57,9 @@ func createIssue(ctx context.Context, db *sqlx.DB, p CreateIssueParams) (Issue, 
 			 WHERE project_id = $1 AND status_id = $4 AND archived_at IS NULL)
 		)
 		RETURNING `+issueCols,
-		p.ProjectID, number, p.IssueTypeID, p.StatusID, parentIssueID,
-		p.Title, p.Description, p.Priority, assigneeID, p.ReporterID, p.DueDate,
-	).StructScan(&out)
+		params.ProjectID, number, params.IssueTypeID, params.StatusID, parentIssueID,
+		params.Title, params.Description, params.Priority, assigneeID, params.ReporterID, params.DueDate,
+	).StructScan(&issue)
 	if err != nil {
 		return Issue{}, fmt.Errorf("insert issue: %w", err)
 	}
@@ -67,12 +67,12 @@ func createIssue(ctx context.Context, db *sqlx.DB, p CreateIssueParams) (Issue, 
 	if err := tx.Commit(); err != nil {
 		return Issue{}, fmt.Errorf("commit create issue: %w", err)
 	}
-	return out, nil
+	return issue, nil
 }
 
 func getIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issue, error) {
-	var out Issue
-	err := db.GetContext(ctx, &out,
+	var issue Issue
+	err := db.GetContext(ctx, &issue,
 		`SELECT `+issueCols+`
 		 FROM issues
 		 WHERE id = $1 AND project_id = $2`,
@@ -84,36 +84,36 @@ func getIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issu
 		}
 		return Issue{}, fmt.Errorf("get issue: %w", err)
 	}
-	return out, nil
+	return issue, nil
 }
 
-func listIssues(ctx context.Context, db *sqlx.DB, p ListIssuesParams) ([]Issue, error) {
+func listIssues(ctx context.Context, db *sqlx.DB, params ListIssuesParams) ([]Issue, error) {
 	query := `SELECT ` + issueCols + `
 		 FROM issues
 		 WHERE project_id = $1
 		   AND archived_at IS NULL`
-	args := []any{p.ProjectID}
+	args := []any{params.ProjectID}
 
-	if p.StatusID != "" {
-		args = append(args, p.StatusID)
+	if params.StatusID != "" {
+		args = append(args, params.StatusID)
 		query += fmt.Sprintf(" AND status_id = $%d", len(args))
 	}
-	if p.AssigneeID != "" {
-		args = append(args, p.AssigneeID)
+	if params.AssigneeID != "" {
+		args = append(args, params.AssigneeID)
 		query += fmt.Sprintf(" AND assignee_id = $%d", len(args))
 	}
 
 	query += ` ORDER BY status_id, status_position ASC`
 
-	var out []Issue
-	if err := db.SelectContext(ctx, &out, query, args...); err != nil {
+	var issues []Issue
+	if err := db.SelectContext(ctx, &issues, query, args...); err != nil {
 		return nil, fmt.Errorf("list issues: %w", err)
 	}
-	return out, nil
+	return issues, nil
 }
 
-func updateIssue(ctx context.Context, db *sqlx.DB, p UpdateIssueParams) (Issue, error) {
-	var out Issue
+func updateIssue(ctx context.Context, db *sqlx.DB, params UpdateIssueParams) (Issue, error) {
+	var issue Issue
 	err := db.QueryRowxContext(ctx,
 		`UPDATE issues
 		 SET title       = $1,
@@ -125,16 +125,16 @@ func updateIssue(ctx context.Context, db *sqlx.DB, p UpdateIssueParams) (Issue, 
 		   AND project_id = $7
 		   AND archived_at IS NULL
 		 RETURNING `+issueCols,
-		p.Title, p.Description, p.Priority, p.AssigneeID, p.DueDate,
-		p.IssueID, p.ProjectID,
-	).StructScan(&out)
+		params.Title, params.Description, params.Priority, params.AssigneeID, params.DueDate,
+		params.IssueID, params.ProjectID,
+	).StructScan(&issue)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Issue{}, ErrIssueNotFound
 		}
 		return Issue{}, fmt.Errorf("update issue: %w", err)
 	}
-	return out, nil
+	return issue, nil
 }
 
 func archiveIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) error {
@@ -166,14 +166,14 @@ type issuePosition struct {
 
 // moveIssue persists the move of an issue to a target status/position.
 // It uses a two-phase offset strategy to avoid transient unique index collisions.
-func moveIssue(ctx context.Context, db *sqlx.DB, p MoveIssueParams) error {
+func moveIssue(ctx context.Context, db *sqlx.DB, params MoveIssueParams) error {
 	tx, err := db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	current, err := getIssuePositionForUpdate(ctx, tx, p.ProjectID, p.IssueID)
+	current, err := getIssuePositionForUpdate(ctx, tx, params.ProjectID, params.IssueID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrIssueNotFound
@@ -182,20 +182,20 @@ func moveIssue(ctx context.Context, db *sqlx.DB, p MoveIssueParams) error {
 	}
 
 	sourceStatusID := current.StatusID
-	targetStatusID := p.TargetStatusID
+	targetStatusID := params.TargetStatusID
 	if targetStatusID == "" {
 		targetStatusID = sourceStatusID
 	}
 
-	if err := lockStatuses(ctx, tx, p.ProjectID, sourceStatusID, targetStatusID); err != nil {
+	if err := lockStatuses(ctx, tx, params.ProjectID, sourceStatusID, targetStatusID); err != nil {
 		return err
 	}
 
-	if err := lockAffectedIssues(ctx, tx, p.ProjectID, sourceStatusID, targetStatusID); err != nil {
+	if err := lockAffectedIssues(ctx, tx, params.ProjectID, sourceStatusID, targetStatusID); err != nil {
 		return err
 	}
 
-	targetPos, err := clampTargetPosition(ctx, tx, p.ProjectID, targetStatusID, p.TargetPosition, sourceStatusID == targetStatusID)
+	targetPos, err := clampTargetPosition(ctx, tx, params.ProjectID, targetStatusID, params.TargetPosition, sourceStatusID == targetStatusID)
 	if err != nil {
 		return err
 	}
@@ -207,19 +207,19 @@ func moveIssue(ctx context.Context, db *sqlx.DB, p MoveIssueParams) error {
 		return nil
 	}
 
-	if err := parkIssueAtTempPosition(ctx, tx, p.ProjectID, p.IssueID, sourceStatusID); err != nil {
+	if err := parkIssueAtTempPosition(ctx, tx, params.ProjectID, params.IssueID, sourceStatusID); err != nil {
 		return err
 	}
 
 	if sourceStatusID == targetStatusID {
-		if err := reorderWithinSameStatus(ctx, tx, p.ProjectID, p.IssueID, sourceStatusID, current.StatusPosition, targetPos); err != nil {
+		if err := reorderWithinSameStatus(ctx, tx, params.ProjectID, params.IssueID, sourceStatusID, current.StatusPosition, targetPos); err != nil {
 			return err
 		}
 	} else {
-		if err := collapseSourceStatus(ctx, tx, p.ProjectID, p.IssueID, sourceStatusID, current.StatusPosition); err != nil {
+		if err := collapseSourceStatus(ctx, tx, params.ProjectID, params.IssueID, sourceStatusID, current.StatusPosition); err != nil {
 			return err
 		}
-		if err := openGapInTargetStatus(ctx, tx, p.ProjectID, targetStatusID, targetPos); err != nil {
+		if err := openGapInTargetStatus(ctx, tx, params.ProjectID, targetStatusID, targetPos); err != nil {
 			return err
 		}
 	}
@@ -233,8 +233,8 @@ func moveIssue(ctx context.Context, db *sqlx.DB, p MoveIssueParams) error {
 		   AND project_id = $4`,
 		targetStatusID,
 		targetPos,
-		p.IssueID,
-		p.ProjectID,
+		params.IssueID,
+		params.ProjectID,
 	); err != nil {
 		return fmt.Errorf("place moved issue: %w", err)
 	}
@@ -247,10 +247,10 @@ func moveIssue(ctx context.Context, db *sqlx.DB, p MoveIssueParams) error {
 }
 
 func getIssuePositionForUpdate(ctx context.Context, tx *sqlx.Tx, projectID, issueID string) (issuePosition, error) {
-	var out issuePosition
+	var pos issuePosition
 	err := tx.GetContext(
 		ctx,
-		&out,
+		&pos,
 		`SELECT status_id, status_position
 		 FROM issues
 		 WHERE id = $1
@@ -263,7 +263,7 @@ func getIssuePositionForUpdate(ctx context.Context, tx *sqlx.Tx, projectID, issu
 	if err != nil {
 		return issuePosition{}, fmt.Errorf("load issue for update: %w", err)
 	}
-	return out, nil
+	return pos, nil
 }
 
 func lockStatuses(ctx context.Context, tx *sqlx.Tx, projectID, sourceStatusID, targetStatusID string) error {

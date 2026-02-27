@@ -32,14 +32,14 @@ type CreateStatusParams struct {
 	Category  string
 }
 
-func (p CreateStatusParams) Validate() error {
-	if p.ProjectID == "" {
+func (params CreateStatusParams) Validate() error {
+	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
-	if p.Name == "" {
+	if params.Name == "" {
 		return errors.New("name is required")
 	}
-	if !validCategories[p.Category] {
+	if !validCategories[params.Category] {
 		return errors.New("category must be 'todo', 'doing' or 'done'")
 	}
 	return nil
@@ -52,30 +52,30 @@ type UpdateStatusParams struct {
 	Category  string
 }
 
-func (p UpdateStatusParams) Validate() error {
-	if p.StatusID == "" {
+func (params UpdateStatusParams) Validate() error {
+	if params.StatusID == "" {
 		return errors.New("status_id is required")
 	}
-	if p.ProjectID == "" {
+	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
-	if p.Name == "" {
+	if params.Name == "" {
 		return errors.New("name is required")
 	}
-	if !validCategories[p.Category] {
+	if !validCategories[params.Category] {
 		return errors.New("category must be 'todo', 'doing' or 'done'")
 	}
 	return nil
 }
 
-func CreateStatus(ctx context.Context, db *sqlx.DB, p CreateStatusParams) (Status, error) {
+func CreateStatus(ctx context.Context, db *sqlx.DB, params CreateStatusParams) (Status, error) {
 	if db == nil {
 		return Status{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return Status{}, err
 	}
-	return createStatus(ctx, db, p)
+	return createStatus(ctx, db, params)
 }
 
 func ListStatuses(ctx context.Context, db *sqlx.DB, projectID string) ([]Status, error) {
@@ -88,14 +88,14 @@ func ListStatuses(ctx context.Context, db *sqlx.DB, projectID string) ([]Status,
 	return listStatuses(ctx, db, projectID)
 }
 
-func UpdateStatus(ctx context.Context, db *sqlx.DB, p UpdateStatusParams) (Status, error) {
+func UpdateStatus(ctx context.Context, db *sqlx.DB, params UpdateStatusParams) (Status, error) {
 	if db == nil {
 		return Status{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return Status{}, err
 	}
-	return updateStatus(ctx, db, p)
+	return updateStatus(ctx, db, params)
 }
 
 func ArchiveStatus(ctx context.Context, db *sqlx.DB, projectID, statusID string) error {

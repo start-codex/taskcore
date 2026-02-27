@@ -11,6 +11,7 @@ import (
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 	mux.HandleFunc("POST /users", handleCreate(db))
 	mux.HandleFunc("GET /users/{userID}", handleGet(db))
+	mux.HandleFunc("POST /auth/login", handleLogin(db))
 }
 
 func fail(w http.ResponseWriter, err error) {
@@ -19,6 +20,8 @@ func fail(w http.ResponseWriter, err error) {
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateEmail):
 		respond.Error(w, http.StatusConflict, err.Error())
+	case errors.Is(err, ErrInvalidCredentials):
+		respond.Error(w, http.StatusUnauthorized, err.Error())
 	default:
 		respond.Error(w, http.StatusInternalServerError, "internal server error")
 	}
@@ -27,34 +30,54 @@ func fail(w http.ResponseWriter, err error) {
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Email string `json:"email"`
-			Name  string `json:"name"`
+			Email    string `json:"email"`
+			Name     string `json:"name"`
+			Password string `json:"password"`
 		}
 		if err := respond.Decode(r, &body); err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateUserParams{Email: body.Email, Name: body.Name}
-		if err := p.Validate(); err != nil {
+		params := CreateUserParams{Email: body.Email, Name: body.Name, Password: body.Password}
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		u, err := CreateUser(r.Context(), db, p)
+		user, err := CreateUser(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusCreated, u)
+		respond.JSON(w, http.StatusCreated, user)
+	}
+}
+
+func handleLogin(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := respond.Decode(r, &body); err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		user, err := AuthenticateUser(r.Context(), db, body.Email, body.Password)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		respond.JSON(w, http.StatusOK, user)
 	}
 }
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u, err := GetUser(r.Context(), db, r.PathValue("userID"))
+		user, err := GetUser(r.Context(), db, r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusOK, u)
+		respond.JSON(w, http.StatusOK, user)
 	}
 }

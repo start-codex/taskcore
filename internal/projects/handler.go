@@ -6,7 +6,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/taskcode/internal/respond"
-	"github.com/start-codex/taskcode/internal/users"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -22,9 +21,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, ErrProjectNotFound),
-		errors.Is(err, users.ErrUserNotFound),
-		errors.Is(err, users.ErrMemberNotFound):
+	case errors.Is(err, ErrProjectNotFound), errors.Is(err, ErrMemberNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateProjectKey):
 		respond.Error(w, http.StatusConflict, err.Error())
@@ -44,22 +41,22 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateProjectParams{
+		params := CreateProjectParams{
 			WorkspaceID: r.PathValue("workspaceID"),
 			Name:        body.Name,
 			Key:         body.Key,
 			Description: body.Description,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		proj, err := CreateProject(r.Context(), db, p)
+		project, err := CreateProject(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusCreated, proj)
+		respond.JSON(w, http.StatusCreated, project)
 	}
 }
 
@@ -76,12 +73,12 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		proj, err := GetProject(r.Context(), db, r.PathValue("projectID"))
+		project, err := GetProject(r.Context(), db, r.PathValue("projectID"))
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusOK, proj)
+		respond.JSON(w, http.StatusOK, project)
 	}
 }
 
@@ -97,7 +94,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 
 func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		members, err := users.ListProjectMembers(r.Context(), db, r.PathValue("projectID"))
+		members, err := ListMembers(r.Context(), db, r.PathValue("projectID"))
 		if err != nil {
 			fail(w, err)
 			return
@@ -116,21 +113,21 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := users.AddProjectMemberParams{
+		params := AddMemberParams{
 			ProjectID: r.PathValue("projectID"),
 			UserID:    body.UserID,
 			Role:      body.Role,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		m, err := users.AddProjectMember(r.Context(), db, p)
+		member, err := AddMember(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusCreated, m)
+		respond.JSON(w, http.StatusCreated, member)
 	}
 }
 
@@ -143,27 +140,27 @@ func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := users.UpdateProjectMemberRoleParams{
+		params := UpdateMemberRoleParams{
 			ProjectID: r.PathValue("projectID"),
 			UserID:    r.PathValue("userID"),
 			Role:      body.Role,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		m, err := users.UpdateProjectMemberRole(r.Context(), db, p)
+		member, err := UpdateMemberRole(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		respond.JSON(w, http.StatusOK, m)
+		respond.JSON(w, http.StatusOK, member)
 	}
 }
 
 func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := users.RemoveProjectMember(r.Context(), db, r.PathValue("projectID"), r.PathValue("userID"))
+		err := RemoveMember(r.Context(), db, r.PathValue("projectID"), r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return

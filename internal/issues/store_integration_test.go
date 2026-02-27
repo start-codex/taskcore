@@ -31,8 +31,8 @@ func TestMoveIssue(t *testing.T) {
 				a := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
 				b := insertIssue(t, db, seed, issueSeed{number: 2, title: "B", statusID: seed.statusTodoID, statusPosition: 1})
 				c := insertIssue(t, db, seed, issueSeed{number: 3, title: "C", statusID: seed.statusTodoID, statusPosition: 2})
-				p := MoveIssueParams{ProjectID: seed.projectID, IssueID: c, TargetStatusID: seed.statusTodoID, TargetPosition: 0}
-				return p, func(t *testing.T) {
+				params := MoveIssueParams{ProjectID: seed.projectID, IssueID: c, TargetStatusID: seed.statusTodoID, TargetPosition: 0}
+				return params, func(t *testing.T) {
 					assertOrder(t,
 						fetchStatusOrder(t, db, seed.projectID, seed.statusTodoID),
 						[]orderedIssue{{ID: c, Pos: 0}, {ID: a, Pos: 1}, {ID: b, Pos: 2}},
@@ -47,8 +47,8 @@ func TestMoveIssue(t *testing.T) {
 				b := insertIssue(t, db, seed, issueSeed{number: 2, title: "B", statusID: seed.statusTodoID, statusPosition: 1})
 				d := insertIssue(t, db, seed, issueSeed{number: 3, title: "D", statusID: seed.statusDoingID, statusPosition: 0})
 				e := insertIssue(t, db, seed, issueSeed{number: 4, title: "E", statusID: seed.statusDoingID, statusPosition: 1})
-				p := MoveIssueParams{ProjectID: seed.projectID, IssueID: b, TargetStatusID: seed.statusDoingID, TargetPosition: 1}
-				return p, func(t *testing.T) {
+				params := MoveIssueParams{ProjectID: seed.projectID, IssueID: b, TargetStatusID: seed.statusDoingID, TargetPosition: 1}
+				return params, func(t *testing.T) {
 					assertOrder(t,
 						fetchStatusOrder(t, db, seed.projectID, seed.statusTodoID),
 						[]orderedIssue{{ID: a, Pos: 0}},
@@ -65,8 +65,8 @@ func TestMoveIssue(t *testing.T) {
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (MoveIssueParams, func(*testing.T)) {
 				a := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
 				b := insertIssue(t, db, seed, issueSeed{number: 2, title: "B", statusID: seed.statusTodoID, statusPosition: 1})
-				p := MoveIssueParams{ProjectID: seed.projectID, IssueID: a, TargetStatusID: seed.statusTodoID, TargetPosition: 0}
-				return p, func(t *testing.T) {
+				params := MoveIssueParams{ProjectID: seed.projectID, IssueID: a, TargetStatusID: seed.statusTodoID, TargetPosition: 0}
+				return params, func(t *testing.T) {
 					assertOrder(t,
 						fetchStatusOrder(t, db, seed.projectID, seed.statusTodoID),
 						[]orderedIssue{{ID: a, Pos: 0}, {ID: b, Pos: 1}},
@@ -78,13 +78,13 @@ func TestMoveIssue(t *testing.T) {
 			name:    "issue not found",
 			wantErr: ErrIssueNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (MoveIssueParams, func(*testing.T)) {
-				p := MoveIssueParams{
+				params := MoveIssueParams{
 					ProjectID:      seed.projectID,
 					IssueID:        "00000000-0000-0000-0000-000000000000",
 					TargetStatusID: seed.statusTodoID,
 					TargetPosition: 0,
 				}
-				return p, nil
+				return params, nil
 			},
 		},
 		{
@@ -93,8 +93,8 @@ func TestMoveIssue(t *testing.T) {
 				a := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
 				b := insertIssue(t, db, seed, issueSeed{number: 2, title: "B", statusID: seed.statusTodoID, statusPosition: 1})
 				c := insertIssue(t, db, seed, issueSeed{number: 3, title: "C", statusID: seed.statusTodoID, statusPosition: 2})
-				p := MoveIssueParams{ProjectID: seed.projectID, IssueID: a, TargetStatusID: seed.statusTodoID, TargetPosition: 999}
-				return p, func(t *testing.T) {
+				params := MoveIssueParams{ProjectID: seed.projectID, IssueID: a, TargetStatusID: seed.statusTodoID, TargetPosition: 999}
+				return params, func(t *testing.T) {
 					assertOrder(t,
 						fetchStatusOrder(t, db, seed.projectID, seed.statusTodoID),
 						[]orderedIssue{{ID: b, Pos: 0}, {ID: c, Pos: 1}, {ID: a, Pos: 2}},
@@ -108,8 +108,8 @@ func TestMoveIssue(t *testing.T) {
 				a := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
 				d := insertIssue(t, db, seed, issueSeed{number: 2, title: "D", statusID: seed.statusDoingID, statusPosition: 0})
 				e := insertIssue(t, db, seed, issueSeed{number: 3, title: "E", statusID: seed.statusDoingID, statusPosition: 1})
-				p := MoveIssueParams{ProjectID: seed.projectID, IssueID: a, TargetStatusID: seed.statusDoingID, TargetPosition: 0}
-				return p, func(t *testing.T) {
+				params := MoveIssueParams{ProjectID: seed.projectID, IssueID: a, TargetStatusID: seed.statusDoingID, TargetPosition: 0}
+				return params, func(t *testing.T) {
 					assertOrder(t,
 						fetchStatusOrder(t, db, seed.projectID, seed.statusDoingID),
 						[]orderedIssue{{ID: a, Pos: 0}, {ID: d, Pos: 1}, {ID: e, Pos: 2}},
@@ -122,8 +122,8 @@ func TestMoveIssue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seed := seedProject(t, db)
-			p, check := tt.arrange(t, db, seed)
-			err := MoveIssue(context.Background(), db, p)
+			params, check := tt.arrange(t, db, seed)
+			err := MoveIssue(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("MoveIssue() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -454,28 +454,28 @@ func TestCreateIssue(t *testing.T) {
 		{
 			name: "creates issue with auto number and position",
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
-				p := CreateIssueParams{
+				params := CreateIssueParams{
 					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
 					StatusID: seed.statusTodoID, Title: "First issue",
 					ReporterID: seed.reporterID, Priority: "medium",
 				}
-				return p, func(t *testing.T) {}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "numbers increment per project",
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
-				p := CreateIssueParams{
+				params := CreateIssueParams{
 					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
 					StatusID: seed.statusTodoID, Title: "Issue",
 					ReporterID: seed.reporterID, Priority: "medium",
 				}
-				first, err := CreateIssue(context.Background(), db, p)
+				first, err := CreateIssue(context.Background(), db, params)
 				if err != nil {
 					t.Fatalf("create first: %v", err)
 				}
-				return p, func(t *testing.T) {
-					second, err := CreateIssue(context.Background(), db, p)
+				return params, func(t *testing.T) {
+					second, err := CreateIssue(context.Background(), db, params)
 					if err != nil {
 						t.Fatalf("create second: %v", err)
 					}
@@ -491,26 +491,26 @@ func TestCreateIssue(t *testing.T) {
 		{
 			name: "empty priority defaults to medium",
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
-				p := CreateIssueParams{
+				params := CreateIssueParams{
 					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
 					StatusID: seed.statusTodoID, Title: "Issue",
 					ReporterID: seed.reporterID,
 				}
-				return p, func(t *testing.T) {}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "creates issue with optional fields",
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (CreateIssueParams, func(*testing.T)) {
 				due := time.Now().Add(48 * time.Hour)
-				p := CreateIssueParams{
+				params := CreateIssueParams{
 					ProjectID: seed.projectID, IssueTypeID: seed.issueTypeID,
 					StatusID: seed.statusTodoID, Title: "Issue with extras",
 					Description: "details", ReporterID: seed.reporterID,
 					AssigneeID: seed.reporterID, Priority: "high",
 					DueDate: &due,
 				}
-				return p, func(t *testing.T) {}
+				return params, func(t *testing.T) {}
 			},
 		},
 	}
@@ -518,8 +518,8 @@ func TestCreateIssue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seed := seedProject(t, db)
-			p, check := tt.arrange(t, db, seed)
-			got, err := CreateIssue(context.Background(), db, p)
+			params, check := tt.arrange(t, db, seed)
+			got, err := CreateIssue(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("CreateIssue() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -646,8 +646,8 @@ func TestListIssues(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seed := seedProject(t, db)
-			p, check := tt.arrange(t, db, seed)
-			got, err := ListIssues(context.Background(), db, p)
+			params, check := tt.arrange(t, db, seed)
+			got, err := ListIssues(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("ListIssues() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -671,27 +671,27 @@ func TestUpdateIssue(t *testing.T) {
 			name: "updates title and priority",
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
 				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "Old", statusID: seed.statusTodoID, statusPosition: 0})
-				p := UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "New", Priority: "high"}
-				return p, func(t *testing.T) {}
+				params := UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "New", Priority: "high"}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "clears assignee when nil",
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
 				id := insertIssue(t, db, seed, issueSeed{number: 1, title: "A", statusID: seed.statusTodoID, statusPosition: 0})
-				p := UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "A", Priority: "medium", AssigneeID: nil}
-				return p, func(t *testing.T) {}
+				params := UpdateIssueParams{IssueID: id, ProjectID: seed.projectID, Title: "A", Priority: "medium", AssigneeID: nil}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name:    "not found",
 			wantErr: ErrIssueNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB, seed projectSeed) (UpdateIssueParams, func(*testing.T)) {
-				p := UpdateIssueParams{
+				params := UpdateIssueParams{
 					IssueID:   "00000000-0000-0000-0000-000000000000",
 					ProjectID: seed.projectID, Title: "X", Priority: "low",
 				}
-				return p, nil
+				return params, nil
 			},
 		},
 		{
@@ -710,17 +710,17 @@ func TestUpdateIssue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			seed := seedProject(t, db)
-			p, check := tt.arrange(t, db, seed)
-			got, err := UpdateIssue(context.Background(), db, p)
+			params, check := tt.arrange(t, db, seed)
+			got, err := UpdateIssue(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("UpdateIssue() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 			if err == nil {
-				if got.Title != p.Title {
-					t.Fatalf("title: got %q, want %q", got.Title, p.Title)
+				if got.Title != params.Title {
+					t.Fatalf("title: got %q, want %q", got.Title, params.Title)
 				}
-				if got.Priority != p.Priority {
-					t.Fatalf("priority: got %q, want %q", got.Priority, p.Priority)
+				if got.Priority != params.Priority {
+					t.Fatalf("priority: got %q, want %q", got.Priority, params.Priority)
 				}
 			}
 			if check != nil {

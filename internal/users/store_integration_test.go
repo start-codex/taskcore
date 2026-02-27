@@ -27,8 +27,8 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "creates user successfully",
 			arrange: func(t *testing.T, db *sqlx.DB) (CreateUserParams, func(*testing.T)) {
-				p := CreateUserParams{Email: uniqueEmail(t, db), Name: "Alice"}
-				return p, func(t *testing.T) {}
+				params := CreateUserParams{Email: uniqueEmail(t, db), Name: "Alice", Password: "pass123"}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
@@ -36,18 +36,18 @@ func TestCreateUser(t *testing.T) {
 			wantErr: ErrDuplicateEmail,
 			arrange: func(t *testing.T, db *sqlx.DB) (CreateUserParams, func(*testing.T)) {
 				email := uniqueEmail(t, db)
-				if _, err := CreateUser(context.Background(), db, CreateUserParams{Email: email, Name: "First"}); err != nil {
+				if _, err := CreateUser(context.Background(), db, CreateUserParams{Email: email, Name: "First", Password: "pass"}); err != nil {
 					t.Fatalf("seed user: %v", err)
 				}
-				return CreateUserParams{Email: email, Name: "Second"}, nil
+				return CreateUserParams{Email: email, Name: "Second", Password: "pass"}, nil
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, check := tt.arrange(t, db)
-			got, err := CreateUser(context.Background(), db, p)
+			params, check := tt.arrange(t, db)
+			got, err := CreateUser(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("CreateUser() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -55,8 +55,8 @@ func TestCreateUser(t *testing.T) {
 				if got.ID == "" {
 					t.Fatal("expected non-empty id")
 				}
-				if got.Email != p.Email {
-					t.Fatalf("email: got %q, want %q", got.Email, p.Email)
+				if got.Email != params.Email {
+					t.Fatalf("email: got %q, want %q", got.Email, params.Email)
 				}
 			}
 			if check != nil {
@@ -196,232 +196,6 @@ func TestArchiveUser(t *testing.T) {
 	}
 }
 
-func TestWorkspaceMembers(t *testing.T) {
-	db := openTestDB(t)
-	ensureSchema(t, db)
-
-	tests := []struct {
-		name    string
-		arrange func(*testing.T, *sqlx.DB) func(*testing.T)
-		wantErr error
-	}{
-		{
-			name: "add and list member",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws := seedWorkspace(t, db)
-				u := seedUser(t, db)
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "member"}); err != nil {
-					t.Fatalf("add member: %v", err)
-				}
-				return func(t *testing.T) {
-					members, err := ListWorkspaceMembers(context.Background(), db, ws)
-					if err != nil {
-						t.Fatalf("list: %v", err)
-					}
-					if len(members) != 1 || members[0].UserID != u.ID {
-						t.Fatalf("expected 1 member with id %q", u.ID)
-					}
-				}
-			},
-		},
-		{
-			name: "add same member twice updates role",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws := seedWorkspace(t, db)
-				u := seedUser(t, db)
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "member"}); err != nil {
-					t.Fatalf("first add: %v", err)
-				}
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "admin"}); err != nil {
-					t.Fatalf("second add: %v", err)
-				}
-				return func(t *testing.T) {
-					members, err := ListWorkspaceMembers(context.Background(), db, ws)
-					if err != nil {
-						t.Fatalf("list: %v", err)
-					}
-					if len(members) != 1 {
-						t.Fatalf("len: got %d, want 1", len(members))
-					}
-					if members[0].Role != "admin" {
-						t.Fatalf("role: got %q, want admin", members[0].Role)
-					}
-				}
-			},
-		},
-		{
-			name: "remove member excludes from list",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws := seedWorkspace(t, db)
-				u := seedUser(t, db)
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "member"}); err != nil {
-					t.Fatalf("add: %v", err)
-				}
-				if err := RemoveWorkspaceMember(context.Background(), db, ws, u.ID); err != nil {
-					t.Fatalf("remove: %v", err)
-				}
-				return func(t *testing.T) {
-					members, err := ListWorkspaceMembers(context.Background(), db, ws)
-					if err != nil {
-						t.Fatalf("list: %v", err)
-					}
-					if len(members) != 0 {
-						t.Fatalf("len: got %d, want 0", len(members))
-					}
-				}
-			},
-		},
-		{
-			name: "re-add removed member restores access",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws := seedWorkspace(t, db)
-				u := seedUser(t, db)
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "member"}); err != nil {
-					t.Fatalf("add: %v", err)
-				}
-				if err := RemoveWorkspaceMember(context.Background(), db, ws, u.ID); err != nil {
-					t.Fatalf("remove: %v", err)
-				}
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "admin"}); err != nil {
-					t.Fatalf("re-add: %v", err)
-				}
-				return func(t *testing.T) {
-					members, err := ListWorkspaceMembers(context.Background(), db, ws)
-					if err != nil {
-						t.Fatalf("list: %v", err)
-					}
-					if len(members) != 1 || members[0].Role != "admin" {
-						t.Fatalf("expected 1 member with role admin")
-					}
-				}
-			},
-		},
-		{
-			name: "update workspace member role",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws := seedWorkspace(t, db)
-				u := seedUser(t, db)
-				if _, err := AddWorkspaceMember(context.Background(), db, AddWorkspaceMemberParams{WorkspaceID: ws, UserID: u.ID, Role: "member"}); err != nil {
-					t.Fatalf("add: %v", err)
-				}
-				got, err := UpdateWorkspaceMemberRole(context.Background(), db, UpdateWorkspaceMemberRoleParams{WorkspaceID: ws, UserID: u.ID, Role: "admin"})
-				if err != nil {
-					t.Fatalf("update role: %v", err)
-				}
-				return func(t *testing.T) {
-					if got.Role != "admin" {
-						t.Fatalf("role: got %q, want admin", got.Role)
-					}
-				}
-			},
-		},
-		{
-			name:    "remove non-existent member",
-			wantErr: ErrMemberNotFound,
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws := seedWorkspace(t, db)
-				err := RemoveWorkspaceMember(context.Background(), db, ws, "00000000-0000-0000-0000-000000000000")
-				if !errors.Is(err, ErrMemberNotFound) {
-					t.Fatalf("RemoveWorkspaceMember() error = %v, wantErr = %v", err, ErrMemberNotFound)
-				}
-				return nil
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			check := tt.arrange(t, db)
-			if check != nil {
-				check(t)
-			}
-		})
-	}
-}
-
-func TestProjectMembers(t *testing.T) {
-	db := openTestDB(t)
-	ensureSchema(t, db)
-
-	tests := []struct {
-		name    string
-		arrange func(*testing.T, *sqlx.DB) func(*testing.T)
-	}{
-		{
-			name: "add and list member",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				proj := seedProject(t, db)
-				u := seedUser(t, db)
-				if _, err := AddProjectMember(context.Background(), db, AddProjectMemberParams{ProjectID: proj, UserID: u.ID, Role: "member"}); err != nil {
-					t.Fatalf("add: %v", err)
-				}
-				return func(t *testing.T) {
-					members, err := ListProjectMembers(context.Background(), db, proj)
-					if err != nil {
-						t.Fatalf("list: %v", err)
-					}
-					if len(members) != 1 || members[0].UserID != u.ID {
-						t.Fatalf("expected 1 member with id %q", u.ID)
-					}
-				}
-			},
-		},
-		{
-			name: "update project member role",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				proj := seedProject(t, db)
-				u := seedUser(t, db)
-				if _, err := AddProjectMember(context.Background(), db, AddProjectMemberParams{ProjectID: proj, UserID: u.ID, Role: "viewer"}); err != nil {
-					t.Fatalf("add: %v", err)
-				}
-				got, err := UpdateProjectMemberRole(context.Background(), db, UpdateProjectMemberRoleParams{ProjectID: proj, UserID: u.ID, Role: "admin"})
-				if err != nil {
-					t.Fatalf("update: %v", err)
-				}
-				return func(t *testing.T) {
-					if got.Role != "admin" {
-						t.Fatalf("role: got %q, want admin", got.Role)
-					}
-				}
-			},
-		},
-		{
-			name: "remove and re-add project member",
-			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				proj := seedProject(t, db)
-				u := seedUser(t, db)
-				if _, err := AddProjectMember(context.Background(), db, AddProjectMemberParams{ProjectID: proj, UserID: u.ID, Role: "viewer"}); err != nil {
-					t.Fatalf("add: %v", err)
-				}
-				if err := RemoveProjectMember(context.Background(), db, proj, u.ID); err != nil {
-					t.Fatalf("remove: %v", err)
-				}
-				if _, err := AddProjectMember(context.Background(), db, AddProjectMemberParams{ProjectID: proj, UserID: u.ID, Role: "admin"}); err != nil {
-					t.Fatalf("re-add: %v", err)
-				}
-				return func(t *testing.T) {
-					members, err := ListProjectMembers(context.Background(), db, proj)
-					if err != nil {
-						t.Fatalf("list: %v", err)
-					}
-					if len(members) != 1 || members[0].Role != "admin" {
-						t.Fatalf("expected 1 member with role admin")
-					}
-				}
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			check := tt.arrange(t, db)
-			if check != nil {
-				check(t)
-			}
-		})
-	}
-}
-
 // --- helpers ---
 
 func openTestDB(t *testing.T) *sqlx.DB {
@@ -484,45 +258,15 @@ func uniqueEmail(t *testing.T, db *sqlx.DB) string {
 func seedUser(t *testing.T, db *sqlx.DB) User {
 	t.Helper()
 	u, err := CreateUser(context.Background(), db, CreateUserParams{
-		Email: uniqueEmail(t, db),
-		Name:  "Test User",
+		Email:    uniqueEmail(t, db),
+		Name:     "Test User",
+		Password: "testpass123",
 	})
 	if err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	t.Cleanup(func() {
-		if _, err := db.ExecContext(context.Background(), `DELETE FROM app_users WHERE id = $1`, u.ID); err != nil {
-			t.Logf("cleanup user %s: %v", u.ID, err)
-		}
+		db.ExecContext(context.Background(), `DELETE FROM app_users WHERE id = $1`, u.ID)
 	})
 	return u
-}
-
-func seedWorkspace(t *testing.T, db *sqlx.DB) string {
-	t.Helper()
-	var id string
-	if err := db.GetContext(context.Background(), &id,
-		`INSERT INTO workspaces (name, slug) VALUES ('ws', gen_random_uuid()::text) RETURNING id`,
-	); err != nil {
-		t.Fatalf("seed workspace: %v", err)
-	}
-	t.Cleanup(func() {
-		if _, err := db.ExecContext(context.Background(), `DELETE FROM workspaces WHERE id = $1`, id); err != nil {
-			t.Logf("cleanup workspace %s: %v", id, err)
-		}
-	})
-	return id
-}
-
-func seedProject(t *testing.T, db *sqlx.DB) string {
-	t.Helper()
-	ws := seedWorkspace(t, db)
-	var id string
-	if err := db.GetContext(context.Background(), &id,
-		`INSERT INTO projects (workspace_id, name, key, description) VALUES ($1, 'Project', upper(substr(replace(gen_random_uuid()::text,'-',''),1,3)), '') RETURNING id`,
-		ws,
-	); err != nil {
-		t.Fatalf("seed project: %v", err)
-	}
-	return id
 }

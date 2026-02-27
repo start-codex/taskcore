@@ -46,7 +46,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateIssueParams{
+		params := CreateIssueParams{
 			ProjectID:     r.PathValue("projectID"),
 			IssueTypeID:   body.IssueTypeID,
 			StatusID:      body.StatusID,
@@ -57,11 +57,11 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			AssigneeID:    body.AssigneeID,
 			ReporterID:    body.ReporterID,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		issue, err := CreateIssue(r.Context(), db, p)
+		issue, err := CreateIssue(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -109,7 +109,7 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := UpdateIssueParams{
+		params := UpdateIssueParams{
 			IssueID:     r.PathValue("issueID"),
 			ProjectID:   r.PathValue("projectID"),
 			Title:       body.Title,
@@ -117,11 +117,11 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			Priority:    body.Priority,
 			AssigneeID:  body.AssigneeID,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		issue, err := UpdateIssue(r.Context(), db, p)
+		issue, err := UpdateIssue(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -150,17 +150,17 @@ func handleMove(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := MoveIssueParams{
+		params := MoveIssueParams{
 			ProjectID:      r.PathValue("projectID"),
 			IssueID:        r.PathValue("issueID"),
 			TargetStatusID: body.TargetStatusID,
 			TargetPosition: body.TargetPosition,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		if err := MoveIssue(r.Context(), db, p); err != nil {
+		if err := MoveIssue(r.Context(), db, params); err != nil {
 			fail(w, err)
 			return
 		}

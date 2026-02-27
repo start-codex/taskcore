@@ -13,32 +13,32 @@ import (
 const boardCols = `id, project_id, name, type, filter_query, created_at, updated_at, archived_at`
 const columnCols = `id, board_id, name, position, created_at, updated_at, archived_at`
 
-func createBoard(ctx context.Context, db *sqlx.DB, p CreateBoardParams) (Board, error) {
-	var out Board
+func createBoard(ctx context.Context, db *sqlx.DB, params CreateBoardParams) (Board, error) {
+	var board Board
 	err := db.QueryRowxContext(
 		ctx,
 		`INSERT INTO boards (project_id, name, type, filter_query)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING `+boardCols,
-		p.ProjectID,
-		p.Name,
-		p.Type,
-		p.FilterQuery,
-	).StructScan(&out)
+		params.ProjectID,
+		params.Name,
+		params.Type,
+		params.FilterQuery,
+	).StructScan(&board)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return Board{}, ErrDuplicateBoardName
 		}
 		return Board{}, fmt.Errorf("insert board: %w", err)
 	}
-	return out, nil
+	return board, nil
 }
 
 func getBoard(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
-	var out Board
+	var board Board
 	err := db.GetContext(
 		ctx,
-		&out,
+		&board,
 		`SELECT `+boardCols+`
 		 FROM boards
 		 WHERE id = $1`,
@@ -50,14 +50,14 @@ func getBoard(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
 		}
 		return Board{}, fmt.Errorf("get board: %w", err)
 	}
-	return out, nil
+	return board, nil
 }
 
 func listBoards(ctx context.Context, db *sqlx.DB, projectID string) ([]Board, error) {
-	var out []Board
+	var boards []Board
 	err := db.SelectContext(
 		ctx,
-		&out,
+		&boards,
 		`SELECT `+boardCols+`
 		 FROM boards
 		 WHERE project_id = $1
@@ -68,7 +68,7 @@ func listBoards(ctx context.Context, db *sqlx.DB, projectID string) ([]Board, er
 	if err != nil {
 		return nil, fmt.Errorf("list boards: %w", err)
 	}
-	return out, nil
+	return boards, nil
 }
 
 func archiveBoard(ctx context.Context, db *sqlx.DB, id string) error {
@@ -93,8 +93,8 @@ func archiveBoard(ctx context.Context, db *sqlx.DB, id string) error {
 	return nil
 }
 
-func addColumn(ctx context.Context, db *sqlx.DB, p AddColumnParams) (BoardColumn, error) {
-	var out BoardColumn
+func addColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (BoardColumn, error) {
+	var column BoardColumn
 	err := db.QueryRowxContext(
 		ctx,
 		`INSERT INTO board_columns (board_id, name, position)
@@ -105,23 +105,23 @@ func addColumn(ctx context.Context, db *sqlx.DB, p AddColumnParams) (BoardColumn
 		    WHERE board_id = $1 AND archived_at IS NULL)
 		 )
 		 RETURNING `+columnCols,
-		p.BoardID,
-		p.Name,
-	).StructScan(&out)
+		params.BoardID,
+		params.Name,
+	).StructScan(&column)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return BoardColumn{}, ErrDuplicateColumnName
 		}
 		return BoardColumn{}, fmt.Errorf("insert board column: %w", err)
 	}
-	return out, nil
+	return column, nil
 }
 
 func listColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]BoardColumn, error) {
-	var out []BoardColumn
+	var columns []BoardColumn
 	err := db.SelectContext(
 		ctx,
-		&out,
+		&columns,
 		`SELECT `+columnCols+`
 		 FROM board_columns
 		 WHERE board_id = $1
@@ -132,7 +132,7 @@ func listColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]BoardColum
 	if err != nil {
 		return nil, fmt.Errorf("list board columns: %w", err)
 	}
-	return out, nil
+	return columns, nil
 }
 
 func archiveColumn(ctx context.Context, db *sqlx.DB, id string) error {
