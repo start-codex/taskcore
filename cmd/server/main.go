@@ -52,14 +52,22 @@ func main() {
 	}
 	slog.Info("migrations applied")
 
+	// API routes live on a sub-mux so they're served under /api/*.
+	// Each domain package registers paths like "POST /users" and the
+	// StripPrefix removes "/api" before matching, so no domain package
+	// needs to know about the prefix.
+	api := http.NewServeMux()
+	users.RegisterRoutes(api, db)
+	workspaces.RegisterRoutes(api, db)
+	projects.RegisterRoutes(api, db)
+	statuses.RegisterRoutes(api, db)
+	issuetypes.RegisterRoutes(api, db)
+	boards.RegisterRoutes(api, db)
+	issues.RegisterRoutes(api, db)
+
 	mux := http.NewServeMux()
-	users.RegisterRoutes(mux, db)
-	workspaces.RegisterRoutes(mux, db)
-	projects.RegisterRoutes(mux, db)
-	statuses.RegisterRoutes(mux, db)
-	issuetypes.RegisterRoutes(mux, db)
-	boards.RegisterRoutes(mux, db)
-	issues.RegisterRoutes(mux, db)
+	mux.Handle("/api/", http.StripPrefix("/api", api))
+	registerUI(mux)
 
 	srv := &http.Server{
 		Addr:         ":" + port,
