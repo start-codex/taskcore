@@ -49,23 +49,23 @@ type CreateIssueParams struct {
 	DueDate       *time.Time
 }
 
-func (p CreateIssueParams) Validate() error {
-	if p.ProjectID == "" {
+func (params CreateIssueParams) Validate() error {
+	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
-	if p.IssueTypeID == "" {
+	if params.IssueTypeID == "" {
 		return errors.New("issue_type_id is required")
 	}
-	if p.StatusID == "" {
+	if params.StatusID == "" {
 		return errors.New("status_id is required")
 	}
-	if p.Title == "" {
+	if params.Title == "" {
 		return errors.New("title is required")
 	}
-	if p.ReporterID == "" {
+	if params.ReporterID == "" {
 		return errors.New("reporter_id is required")
 	}
-	priority := p.Priority
+	priority := params.Priority
 	if priority == "" {
 		priority = "medium"
 	}
@@ -85,17 +85,17 @@ type UpdateIssueParams struct {
 	DueDate     *time.Time
 }
 
-func (p UpdateIssueParams) Validate() error {
-	if p.IssueID == "" {
+func (params UpdateIssueParams) Validate() error {
+	if params.IssueID == "" {
 		return errors.New("issue_id is required")
 	}
-	if p.ProjectID == "" {
+	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
-	if p.Title == "" {
+	if params.Title == "" {
 		return errors.New("title is required")
 	}
-	if !validPriorities[p.Priority] {
+	if !validPriorities[params.Priority] {
 		return ErrInvalidPriority
 	}
 	return nil
@@ -107,17 +107,17 @@ type ListIssuesParams struct {
 	AssigneeID string
 }
 
-func CreateIssue(ctx context.Context, db *sqlx.DB, p CreateIssueParams) (Issue, error) {
+func CreateIssue(ctx context.Context, db *sqlx.DB, params CreateIssueParams) (Issue, error) {
 	if db == nil {
 		return Issue{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return Issue{}, err
 	}
-	if p.Priority == "" {
-		p.Priority = "medium"
+	if params.Priority == "" {
+		params.Priority = "medium"
 	}
-	return createIssue(ctx, db, p)
+	return createIssue(ctx, db, params)
 }
 
 func GetIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issue, error) {
@@ -133,24 +133,24 @@ func GetIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issu
 	return getIssue(ctx, db, projectID, issueID)
 }
 
-func ListIssues(ctx context.Context, db *sqlx.DB, p ListIssuesParams) ([]Issue, error) {
+func ListIssues(ctx context.Context, db *sqlx.DB, params ListIssuesParams) ([]Issue, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
-	if p.ProjectID == "" {
+	if params.ProjectID == "" {
 		return nil, errors.New("project_id is required")
 	}
-	return listIssues(ctx, db, p)
+	return listIssues(ctx, db, params)
 }
 
-func UpdateIssue(ctx context.Context, db *sqlx.DB, p UpdateIssueParams) (Issue, error) {
+func UpdateIssue(ctx context.Context, db *sqlx.DB, params UpdateIssueParams) (Issue, error) {
 	if db == nil {
 		return Issue{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return Issue{}, err
 	}
-	return updateIssue(ctx, db, p)
+	return updateIssue(ctx, db, params)
 }
 
 func ArchiveIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) error {
@@ -173,22 +173,22 @@ type MoveIssueParams struct {
 	TargetPosition int
 }
 
-func (p MoveIssueParams) Validate() error {
-	if p.ProjectID == "" || p.IssueID == "" {
+func (params MoveIssueParams) Validate() error {
+	if params.ProjectID == "" || params.IssueID == "" {
 		return errors.New("project_id and issue_id are required")
 	}
-	if p.TargetPosition < 0 {
+	if params.TargetPosition < 0 {
 		return errors.New("target_position must be >= 0")
 	}
 	return nil
 }
 
-func MoveIssue(ctx context.Context, db *sqlx.DB, p MoveIssueParams) error {
+func MoveIssue(ctx context.Context, db *sqlx.DB, params MoveIssueParams) error {
 	if db == nil {
 		return errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return err
 	}
-	return moveIssue(ctx, db, p)
+	return moveIssue(ctx, db, params)
 }

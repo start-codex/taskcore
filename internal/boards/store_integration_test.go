@@ -27,16 +27,16 @@ func TestCreateBoard(t *testing.T) {
 			name: "creates kanban board",
 			arrange: func(t *testing.T, db *sqlx.DB) (CreateBoardParams, func(*testing.T)) {
 				proj := seedProject(t, db)
-				p := CreateBoardParams{ProjectID: proj, Name: "Main Board", Type: "kanban"}
-				return p, func(t *testing.T) {}
+				params := CreateBoardParams{ProjectID: proj, Name: "Main Board", Type: "kanban"}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "creates scrum board",
 			arrange: func(t *testing.T, db *sqlx.DB) (CreateBoardParams, func(*testing.T)) {
 				proj := seedProject(t, db)
-				p := CreateBoardParams{ProjectID: proj, Name: "Sprint Board", Type: "scrum", FilterQuery: "type=story"}
-				return p, func(t *testing.T) {}
+				params := CreateBoardParams{ProjectID: proj, Name: "Sprint Board", Type: "scrum", FilterQuery: "type=story"}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
@@ -66,8 +66,8 @@ func TestCreateBoard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, check := tt.arrange(t, db)
-			got, err := CreateBoard(context.Background(), db, p)
+			params, check := tt.arrange(t, db)
+			got, err := CreateBoard(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("CreateBoard() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -75,11 +75,11 @@ func TestCreateBoard(t *testing.T) {
 				if got.ID == "" {
 					t.Fatal("expected non-empty id")
 				}
-				if got.ProjectID != p.ProjectID {
-					t.Fatalf("project_id: got %q, want %q", got.ProjectID, p.ProjectID)
+				if got.ProjectID != params.ProjectID {
+					t.Fatalf("project_id: got %q, want %q", got.ProjectID, params.ProjectID)
 				}
-				if got.Type != p.Type {
-					t.Fatalf("type: got %q, want %q", got.Type, p.Type)
+				if got.Type != params.Type {
+					t.Fatalf("type: got %q, want %q", got.Type, params.Type)
 				}
 			}
 			if check != nil {
@@ -209,8 +209,8 @@ func TestAddColumn(t *testing.T) {
 			name: "adds first column at position 0",
 			arrange: func(t *testing.T, db *sqlx.DB) (AddColumnParams, func(*testing.T)) {
 				board := seedBoard(t, db)
-				p := AddColumnParams{BoardID: board, Name: "To Do"}
-				return p, func(t *testing.T) {}
+				params := AddColumnParams{BoardID: board, Name: "To Do"}
+				return params, func(t *testing.T) {}
 			},
 		},
 		{
@@ -223,8 +223,8 @@ func TestAddColumn(t *testing.T) {
 				if _, err := AddColumn(context.Background(), db, AddColumnParams{BoardID: board, Name: "In Progress"}); err != nil {
 					t.Fatalf("add second column: %v", err)
 				}
-				p := AddColumnParams{BoardID: board, Name: "Done"}
-				return p, func(t *testing.T) {
+				params := AddColumnParams{BoardID: board, Name: "Done"}
+				return params, func(t *testing.T) {
 					cols, err := ListColumns(context.Background(), db, board)
 					if err != nil {
 						t.Fatalf("list columns: %v", err)
@@ -255,8 +255,8 @@ func TestAddColumn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, check := tt.arrange(t, db)
-			got, err := AddColumn(context.Background(), db, p)
+			params, check := tt.arrange(t, db)
+			got, err := AddColumn(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("AddColumn() error = %v, wantErr = %v", err, tt.wantErr)
 			}

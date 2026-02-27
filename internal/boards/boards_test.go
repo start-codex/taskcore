@@ -8,44 +8,44 @@ import (
 func TestCreateBoardParams_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		p       CreateBoardParams
+		params  CreateBoardParams
 		wantErr bool
 	}{
 		{
 			name:    "valid kanban",
-			p:       CreateBoardParams{ProjectID: "proj-1", Name: "Main Board", Type: "kanban"},
+			params:  CreateBoardParams{ProjectID: "proj-1", Name: "Main Board", Type: "kanban"},
 			wantErr: false,
 		},
 		{
 			name:    "valid scrum",
-			p:       CreateBoardParams{ProjectID: "proj-1", Name: "Sprint Board", Type: "scrum"},
+			params:  CreateBoardParams{ProjectID: "proj-1", Name: "Sprint Board", Type: "scrum"},
 			wantErr: false,
 		},
 		{
 			name:    "missing project_id",
-			p:       CreateBoardParams{ProjectID: "", Name: "Main Board", Type: "kanban"},
+			params:  CreateBoardParams{ProjectID: "", Name: "Main Board", Type: "kanban"},
 			wantErr: true,
 		},
 		{
 			name:    "missing name",
-			p:       CreateBoardParams{ProjectID: "proj-1", Name: "", Type: "kanban"},
+			params:  CreateBoardParams{ProjectID: "proj-1", Name: "", Type: "kanban"},
 			wantErr: true,
 		},
 		{
 			name:    "invalid type",
-			p:       CreateBoardParams{ProjectID: "proj-1", Name: "Main Board", Type: "other"},
+			params:  CreateBoardParams{ProjectID: "proj-1", Name: "Main Board", Type: "other"},
 			wantErr: true,
 		},
 		{
 			name:    "empty type",
-			p:       CreateBoardParams{ProjectID: "proj-1", Name: "Main Board", Type: ""},
+			params:  CreateBoardParams{ProjectID: "proj-1", Name: "Main Board", Type: ""},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate()
+			err := tt.params.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -56,29 +56,29 @@ func TestCreateBoardParams_Validate(t *testing.T) {
 func TestAddColumnParams_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		p       AddColumnParams
+		params  AddColumnParams
 		wantErr bool
 	}{
 		{
 			name:    "valid",
-			p:       AddColumnParams{BoardID: "board-1", Name: "To Do"},
+			params:  AddColumnParams{BoardID: "board-1", Name: "To Do"},
 			wantErr: false,
 		},
 		{
 			name:    "missing board_id",
-			p:       AddColumnParams{BoardID: "", Name: "To Do"},
+			params:  AddColumnParams{BoardID: "", Name: "To Do"},
 			wantErr: true,
 		},
 		{
 			name:    "missing name",
-			p:       AddColumnParams{BoardID: "board-1", Name: ""},
+			params:  AddColumnParams{BoardID: "board-1", Name: ""},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate()
+			err := tt.params.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}

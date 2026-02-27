@@ -8,64 +8,64 @@ import (
 func TestCreateProjectParams_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		p       CreateProjectParams
+		params  CreateProjectParams
 		wantErr bool
 	}{
 		{
 			name:    "valid",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG"},
 			wantErr: false,
 		},
 		{
 			name:    "key exactly 2 chars",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "AB"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "AB"},
 			wantErr: false,
 		},
 		{
 			name:    "key exactly 10 chars",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJ"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJ"},
 			wantErr: false,
 		},
 		{
 			name:    "missing workspace_id",
-			p:       CreateProjectParams{WorkspaceID: "", Name: "Engineering", Key: "ENG"},
+			params:  CreateProjectParams{WorkspaceID: "", Name: "Engineering", Key: "ENG"},
 			wantErr: true,
 		},
 		{
 			name:    "missing name",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "", Key: "ENG"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "", Key: "ENG"},
 			wantErr: true,
 		},
 		{
 			name:    "key too short",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "E"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "E"},
 			wantErr: true,
 		},
 		{
 			name:    "key too long",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJK"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJK"},
 			wantErr: true,
 		},
 		{
 			name:    "key lowercase",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "eng"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "eng"},
 			wantErr: true,
 		},
 		{
 			name:    "key with digits",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG1"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG1"},
 			wantErr: true,
 		},
 		{
 			name:    "key with spaces",
-			p:       CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "EN G"},
+			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "EN G"},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate()
+			err := tt.params.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}

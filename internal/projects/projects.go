@@ -12,7 +12,10 @@ import (
 var (
 	ErrProjectNotFound     = errors.New("project not found")
 	ErrDuplicateProjectKey = errors.New("project key already exists in workspace")
+	ErrMemberNotFound      = errors.New("member not found")
 )
+
+var validRoles = map[string]bool{"admin": true, "member": true, "viewer": true}
 
 var reKey = regexp.MustCompile(`^[A-Z]{2,10}$`)
 
@@ -34,27 +37,27 @@ type CreateProjectParams struct {
 	Description string
 }
 
-func (p CreateProjectParams) Validate() error {
-	if p.WorkspaceID == "" {
+func (params CreateProjectParams) Validate() error {
+	if params.WorkspaceID == "" {
 		return errors.New("workspace_id is required")
 	}
-	if p.Name == "" {
+	if params.Name == "" {
 		return errors.New("name is required")
 	}
-	if !reKey.MatchString(p.Key) {
+	if !reKey.MatchString(params.Key) {
 		return errors.New("key must be 2-10 uppercase letters (A-Z)")
 	}
 	return nil
 }
 
-func CreateProject(ctx context.Context, db *sqlx.DB, p CreateProjectParams) (Project, error) {
+func CreateProject(ctx context.Context, db *sqlx.DB, params CreateProjectParams) (Project, error) {
 	if db == nil {
 		return Project{}, errors.New("db is required")
 	}
-	if err := p.Validate(); err != nil {
+	if err := params.Validate(); err != nil {
 		return Project{}, err
 	}
-	return createProject(ctx, db, p)
+	return createProject(ctx, db, params)
 }
 
 func GetProject(ctx context.Context, db *sqlx.DB, id string) (Project, error) {
@@ -75,6 +78,96 @@ func ListProjects(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Proje
 		return nil, errors.New("workspace_id is required")
 	}
 	return listProjects(ctx, db, workspaceID)
+}
+
+type ProjectMember struct {
+	ProjectID  string     `db:"project_id"  json:"project_id"`
+	UserID     string     `db:"user_id"     json:"user_id"`
+	Role       string     `db:"role"        json:"role"`
+	CreatedAt  time.Time  `db:"created_at"  json:"created_at"`
+	UpdatedAt  time.Time  `db:"updated_at"  json:"updated_at"`
+	ArchivedAt *time.Time `db:"archived_at" json:"archived_at,omitempty"`
+}
+
+type AddMemberParams struct {
+	ProjectID string
+	UserID    string
+	Role      string
+}
+
+func (params AddMemberParams) Validate() error {
+	if params.ProjectID == "" {
+		return errors.New("project_id is required")
+	}
+	if params.UserID == "" {
+		return errors.New("user_id is required")
+	}
+	if !validRoles[params.Role] {
+		return errors.New("role must be 'admin', 'member' or 'viewer'")
+	}
+	return nil
+}
+
+type UpdateMemberRoleParams struct {
+	ProjectID string
+	UserID    string
+	Role      string
+}
+
+func (params UpdateMemberRoleParams) Validate() error {
+	if params.ProjectID == "" {
+		return errors.New("project_id is required")
+	}
+	if params.UserID == "" {
+		return errors.New("user_id is required")
+	}
+	if !validRoles[params.Role] {
+		return errors.New("role must be 'admin', 'member' or 'viewer'")
+	}
+	return nil
+}
+
+func AddMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (ProjectMember, error) {
+	if db == nil {
+		return ProjectMember{}, errors.New("db is required")
+	}
+	if err := params.Validate(); err != nil {
+		return ProjectMember{}, err
+	}
+	return addMember(ctx, db, params)
+}
+
+func RemoveMember(ctx context.Context, db *sqlx.DB, projectID, userID string) error {
+	if db == nil {
+		return errors.New("db is required")
+	}
+	if projectID == "" {
+		return errors.New("project_id is required")
+	}
+	if userID == "" {
+		return errors.New("user_id is required")
+	}
+	return removeMember(ctx, db, projectID, userID)
+}
+
+func ListMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]ProjectMember, error) {
+	if db == nil {
+		return nil, errors.New("db is required")
+	}
+	if projectID == "" {
+		return nil, errors.New("project_id is required")
+	}
+	return listMembers(ctx, db, projectID)
+}
+
+func UpdateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (ProjectMember, error) {
+	if db == nil {
+		return ProjectMember{}, errors.New("db is required")
+	}
+	if err := params.Validate(); err != nil {
+		return ProjectMember{}, err
+	}
+	return updateMemberRole(ctx, db, params)
 }
 
 func ArchiveProject(ctx context.Context, db *sqlx.DB, id string) error {

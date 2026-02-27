@@ -42,17 +42,17 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := CreateBoardParams{
+		params := CreateBoardParams{
 			ProjectID:   r.PathValue("projectID"),
 			Name:        body.Name,
 			Type:        body.Type,
 			FilterQuery: body.FilterQuery,
 		}
-		if err := p.Validate(); err != nil {
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		b, err := CreateBoard(r.Context(), db, p)
+		b, err := CreateBoard(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -102,12 +102,12 @@ func handleAddColumn(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		p := AddColumnParams{BoardID: r.PathValue("boardID"), Name: body.Name}
-		if err := p.Validate(); err != nil {
+		params := AddColumnParams{BoardID: r.PathValue("boardID"), Name: body.Name}
+		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		col, err := AddColumn(r.Context(), db, p)
+		col, err := AddColumn(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return

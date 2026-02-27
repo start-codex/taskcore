@@ -8,59 +8,59 @@ import (
 func TestCreateWorkspaceParams_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		p       CreateWorkspaceParams
+		params  CreateWorkspaceParams
 		wantErr bool
 	}{
 		{
 			name:    "valid",
-			p:       CreateWorkspaceParams{Name: "Acme Corp", Slug: "acme-corp"},
+			params:  CreateWorkspaceParams{Name: "Acme Corp", Slug: "acme-corp"},
 			wantErr: false,
 		},
 		{
 			name:    "slug exactly 2 chars",
-			p:       CreateWorkspaceParams{Name: "AB", Slug: "ab"},
+			params:  CreateWorkspaceParams{Name: "AB", Slug: "ab"},
 			wantErr: false,
 		},
 		{
 			name:    "slug with digits",
-			p:       CreateWorkspaceParams{Name: "Team 42", Slug: "team42"},
+			params:  CreateWorkspaceParams{Name: "Team 42", Slug: "team42"},
 			wantErr: false,
 		},
 		{
 			name:    "missing name",
-			p:       CreateWorkspaceParams{Name: "", Slug: "acme"},
+			params:  CreateWorkspaceParams{Name: "", Slug: "acme"},
 			wantErr: true,
 		},
 		{
 			name:    "slug too short",
-			p:       CreateWorkspaceParams{Name: "A", Slug: "a"},
+			params:  CreateWorkspaceParams{Name: "A", Slug: "a"},
 			wantErr: true,
 		},
 		{
 			name:    "slug with uppercase",
-			p:       CreateWorkspaceParams{Name: "Acme", Slug: "Acme"},
+			params:  CreateWorkspaceParams{Name: "Acme", Slug: "Acme"},
 			wantErr: true,
 		},
 		{
 			name:    "slug starts with hyphen",
-			p:       CreateWorkspaceParams{Name: "Acme", Slug: "-acme"},
+			params:  CreateWorkspaceParams{Name: "Acme", Slug: "-acme"},
 			wantErr: true,
 		},
 		{
 			name:    "slug with spaces",
-			p:       CreateWorkspaceParams{Name: "Acme", Slug: "acme corp"},
+			params:  CreateWorkspaceParams{Name: "Acme", Slug: "acme corp"},
 			wantErr: true,
 		},
 		{
 			name:    "empty slug",
-			p:       CreateWorkspaceParams{Name: "Acme", Slug: ""},
+			params:  CreateWorkspaceParams{Name: "Acme", Slug: ""},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate()
+			err := tt.params.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
