@@ -161,6 +161,24 @@ func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleP
 	return member, nil
 }
 
+func listByUser(ctx context.Context, db *sqlx.DB, userID string) ([]Workspace, error) {
+	workspaceList := []Workspace{}
+	err := db.SelectContext(ctx, &workspaceList,
+		`SELECT w.id, w.name, w.slug, w.created_at, w.updated_at, w.archived_at
+		 FROM workspaces w
+		 JOIN workspace_members wm ON wm.workspace_id = w.id
+		 WHERE wm.user_id = $1
+		   AND w.archived_at IS NULL
+		   AND wm.archived_at IS NULL
+		 ORDER BY w.name`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces by user: %w", err)
+	}
+	return workspaceList, nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pqErr *pq.Error
 	return errors.As(err, &pqErr) && pqErr.Code == "23505"

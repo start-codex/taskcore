@@ -3,14 +3,19 @@
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 	import { useSidebar } from "$lib/components/ui/sidebar/index.js";
 	import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
-	import PlusIcon from "@lucide/svelte/icons/plus";
+	import type { Workspace } from '$lib/api';
 
-	// This should be `Component` after @lucide/svelte updates types
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let { teams }: { teams: { name: string; logo: any; plan: string }[] } = $props();
+	let {
+		workspaces,
+		selected,
+		onSelect
+	}: {
+		workspaces: Workspace[];
+		selected: Workspace | null;
+		onSelect: (w: Workspace) => void;
+	} = $props();
+
 	const sidebar = useSidebar();
-
-	let activeTeam = $state(teams[0]);
 </script>
 
 <Sidebar.Menu>
@@ -24,15 +29,15 @@
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
 						<div
-							class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
+							class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-semibold"
 						>
-							<activeTeam.logo class="size-4" />
+							{selected ? selected.name[0].toUpperCase() : '?'}
 						</div>
 						<div class="grid flex-1 text-start text-sm leading-tight">
 							<span class="truncate font-medium">
-								{activeTeam.name}
+								{selected ? selected.name : 'No workspace'}
 							</span>
-							<span class="truncate text-xs">{activeTeam.plan}</span>
+							<span class="truncate text-xs">{selected ? selected.slug : ''}</span>
 						</div>
 						<ChevronsUpDownIcon class="ms-auto" />
 					</Sidebar.MenuButton>
@@ -44,25 +49,16 @@
 				side={sidebar.isMobile ? "bottom" : "right"}
 				sideOffset={4}
 			>
-				<DropdownMenu.Label class="text-muted-foreground text-xs">Teams</DropdownMenu.Label>
-				{#each teams as team, index (team.name)}
-					<DropdownMenu.Item onSelect={() => (activeTeam = team)} class="gap-2 p-2">
-						<div class="flex size-6 items-center justify-center rounded-md border">
-							<team.logo class="size-3.5 shrink-0" />
+				<DropdownMenu.Label class="text-muted-foreground text-xs">Workspaces</DropdownMenu.Label>
+				{#each workspaces as workspace, index (workspace.id)}
+					<DropdownMenu.Item onSelect={() => onSelect(workspace)} class="gap-2 p-2">
+						<div class="flex size-6 items-center justify-center rounded-md border font-semibold text-xs">
+							{workspace.name[0].toUpperCase()}
 						</div>
-						{team.name}
+						{workspace.name}
 						<DropdownMenu.Shortcut>⌘{index + 1}</DropdownMenu.Shortcut>
 					</DropdownMenu.Item>
 				{/each}
-				<DropdownMenu.Separator />
-				<DropdownMenu.Item class="gap-2 p-2">
-					<div
-						class="flex size-6 items-center justify-center rounded-md border bg-transparent"
-					>
-						<PlusIcon class="size-4" />
-					</div>
-					<div class="text-muted-foreground font-medium">Add team</div>
-				</DropdownMenu.Item>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 	</Sidebar.MenuItem>

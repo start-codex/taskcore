@@ -16,6 +16,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 	mux.HandleFunc("POST /workspaces/{workspaceID}/members", handleAddMember(db))
 	mux.HandleFunc("PUT /workspaces/{workspaceID}/members/{userID}", handleUpdateMemberRole(db))
 	mux.HandleFunc("DELETE /workspaces/{workspaceID}/members/{userID}", handleRemoveMember(db))
+	mux.HandleFunc("GET /workspaces", handleListByUser(db))
 }
 
 func fail(w http.ResponseWriter, err error) {
@@ -148,5 +149,21 @@ func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleListByUser(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := r.URL.Query().Get("user_id")
+		if userID == "" {
+			respond.Error(w, http.StatusBadRequest, "user_id query param is required")
+			return
+		}
+		workspaceList, err := ListByUser(r.Context(), db, userID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		respond.JSON(w, http.StatusOK, workspaceList)
 	}
 }

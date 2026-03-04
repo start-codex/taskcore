@@ -1,5 +1,12 @@
 const BASE = '/api';
 
+interface ApiResponse<T> {
+	status: number;
+	data?: T;
+	error?: string;
+	message?: string;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
 	const res = await fetch(`${BASE}${path}`, {
 		method,
@@ -7,13 +14,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 		body: body ? JSON.stringify(body) : undefined
 	});
 
+	if (res.status === 204) return undefined as T;
+
+	const json: ApiResponse<T> = await res.json().catch(() => ({ status: res.status, error: res.statusText }));
+
 	if (!res.ok) {
-		const err = await res.json().catch(() => ({ error: res.statusText }));
-		throw new Error(err.error ?? res.statusText);
+		throw new Error(json.error ?? res.statusText);
 	}
 
-	if (res.status === 204) return undefined as T;
-	return res.json();
+	return json.data as T;
 }
 
 const get = <T>(path: string) => request<T>('GET', path);
@@ -37,6 +46,7 @@ export const workspaces = {
 	create: (body: { name: string; slug: string }) => post<Workspace>('/workspaces', body),
 	get: (workspaceID: string) => get<Workspace>(`/workspaces/${workspaceID}`),
 	archive: (workspaceID: string) => del(`/workspaces/${workspaceID}`),
+	listByUser: (userID: string) => get<Workspace[]>(`/workspaces?user_id=${userID}`),
 	members: {
 		list: (workspaceID: string) => get<WorkspaceMember[]>(`/workspaces/${workspaceID}/members`),
 		add: (workspaceID: string, body: { user_id: string; role: string }) =>

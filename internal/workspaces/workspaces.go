@@ -163,6 +163,16 @@ func UpdateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleP
 	return updateMemberRole(ctx, db, params)
 }
 
+func ListByUser(ctx context.Context, db *sqlx.DB, userID string) ([]Workspace, error) {
+	if db == nil {
+		return nil, errors.New("db is required")
+	}
+	if userID == "" {
+		return nil, errors.New("user_id is required")
+	}
+	return listByUser(ctx, db, userID)
+}
+
 func ArchiveWorkspace(ctx context.Context, db *sqlx.DB, id string) error {
 	if db == nil {
 		return errors.New("db is required")
