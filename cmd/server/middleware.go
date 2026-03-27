@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/taskcode/internal/authctx"
 	"github.com/start-codex/taskcode/internal/respond"
+	"github.com/start-codex/taskcode/internal/sessions"
 )
 
 type statusWriter struct {
@@ -41,6 +44,43 @@ func withLogger(next http.Handler) http.Handler {
 			"duration_ms", time.Since(start).Milliseconds(),
 			"request_id", w.Header().Get("X-Request-ID"),
 		)
+	})
+}
+
+var authAllowlist = []struct{ method, path string }{
+	{"POST", "/users"},
+	{"POST", "/auth/login"},
+	{"GET", "/auth/me"},
+	{"POST", "/auth/logout"},
+}
+
+func withAuth(next http.Handler, db *sqlx.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, route := range authAllowlist {
+			if r.Method == route.method && r.URL.Path == route.path {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		cookie, err := r.Cookie("session_id")
+		if err != nil || cookie.Value == "" {
+			respond.Error(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+
+		session, err := sessions.Validate(r.Context(), db, cookie.Value)
+		if err != nil {
+			if sessions.IsAuthError(err) {
+				respond.Error(w, http.StatusUnauthorized, "authentication required")
+				return
+			}
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+
+		ctx := authctx.WithUserID(r.Context(), session.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

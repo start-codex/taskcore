@@ -66,7 +66,7 @@ func main() {
 	issues.RegisterRoutes(api, db)
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/", http.StripPrefix("/api", api))
+	mux.Handle("/api/", http.StripPrefix("/api", withAuth(api, db)))
 	registerUI(mux)
 
 	srv := &http.Server{

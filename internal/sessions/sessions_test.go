@@ -3,6 +3,8 @@ package sessions
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -50,6 +52,29 @@ func TestHashToken(t *testing.T) {
 	}
 	if h1 == token {
 		t.Fatal("HashToken() returned the raw token")
+	}
+}
+
+func TestIsAuthError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "session not found", err: ErrSessionNotFound, want: true},
+		{name: "session expired", err: ErrSessionExpired, want: true},
+		{name: "user archived", err: ErrUserArchived, want: true},
+		{name: "wrapped auth error", err: fmt.Errorf("validate session: %w", ErrSessionExpired), want: true},
+		{name: "generic error", err: errors.New("db down"), want: false},
+		{name: "nil", err: nil, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsAuthError(tt.err); got != tt.want {
+				t.Fatalf("IsAuthError() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

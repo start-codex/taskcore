@@ -73,6 +73,14 @@ type CreateResult struct {
 	RawToken string
 }
 
+// IsAuthError reports whether err means the session should be treated as
+// unauthenticated rather than as an internal server failure.
+func IsAuthError(err error) bool {
+	return errors.Is(err, ErrSessionNotFound) ||
+		errors.Is(err, ErrSessionExpired) ||
+		errors.Is(err, ErrUserArchived)
+}
+
 // Validate validates a session by its raw token.
 // The token is hashed before lookup. Returns ErrSessionNotFound if the
 // session does not exist, ErrSessionExpired if expired, or ErrUserArchived

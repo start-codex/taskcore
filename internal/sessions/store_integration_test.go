@@ -9,7 +9,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/start-codex/taskcode/internal/testpg"
-	"github.com/start-codex/taskcode/internal/users"
 )
 
 func TestCreateSession(t *testing.T) {
@@ -242,21 +241,26 @@ func TestSessionLifecycle(t *testing.T) {
 
 // --- helpers ---
 
-func seedUser(t *testing.T, db *sqlx.DB) users.User {
+type testUser struct{ ID string }
+
+func seedUser(t *testing.T, db *sqlx.DB) testUser {
 	t.Helper()
 	suffix := testpg.UniqueSuffix(t, db)
-	u, err := users.CreateUser(context.Background(), db, users.CreateUserParams{
-		Email:    "session-test-" + suffix + "@test.local",
-		Name:     "Session Test User",
-		Password: "testpass123",
-	})
+	var id string
+	err := db.QueryRowContext(context.Background(),
+		`INSERT INTO app_users (email, name, password_hash)
+		 VALUES ($1, $2, $3) RETURNING id`,
+		"session-test-"+suffix+"@test.local",
+		"Session Test User",
+		"placeholder-hash",
+	).Scan(&id)
 	if err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
 	t.Cleanup(func() {
-		db.ExecContext(context.Background(), `DELETE FROM app_users WHERE id = $1`, u.ID)
+		db.ExecContext(context.Background(), `DELETE FROM app_users WHERE id = $1`, id)
 	})
-	return u
+	return testUser{ID: id}
 }
 
 func seedSession(t *testing.T, db *sqlx.DB) CreateResult {
