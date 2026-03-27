@@ -44,8 +44,15 @@ The core platform infrastructure and first working end-to-end flow.
 
 Close the gap between what the backend supports and what the UI delivers. Deliver a fully usable, secure baseline.
 
-- **Full cookie-based authentication**: server-side sessions with `HttpOnly`, `Secure`, `SameSite=Strict` cookies; logout endpoint; replace current local storage approach.
-- **Membership enforcement**: workspace and project membership validated per handler using the session context.
+**Authentication and authorization** (6-PR delivery plan):
+- PR 1 `[shipped]` — Session storage foundation: `internal/sessions` with `Create`, `Validate`, `Delete`. SHA-256 hashed tokens. Archived-user rejection. Migration `0003_create_sessions`.
+- PR 2 `[pending]` — Auth middleware (`withAuth`) and endpoints: `POST /auth/login` (cookie), `GET /auth/me`, `POST /auth/logout`. Self-only `GET /users/{userID}`.
+- PR 3 `[pending]` — Membership authorization: `internal/authz` with context helpers and workspace membership enforcement on member-level routes.
+- PR 4 `[pending]` — Remove client-controlled identity: drop `owner_id`, `reporter_id`, `user_id` from API contracts; derive from session.
+- PR 5 `[pending]` — Admin/owner authorization for workspace and project administration.
+- PR 6 `[pending]` — Frontend session migration (replace auth localStorage with `/auth/me`) and workflow configuration admin enforcement.
+
+**Other Phase 1 items:**
 - **Board UI — drag-and-drop**: wire the frontend to `MoveIssue`; issues move between columns with correct position updates.
 - **Issue detail page**: view and edit title, description, priority, assignee, due date.
 - **Basic board filters**: filter by assignee, priority, and issue type.

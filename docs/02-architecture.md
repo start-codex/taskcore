@@ -153,7 +153,8 @@ Each `handler.go` defines a local `fail(w, err)` function that maps domain senti
 
 - `POST /api/auth/login` exists and returns a user payload on success.
 - The frontend currently stores the returned user object in **local storage**.
-- Full cookie-based session management, a logout endpoint, and per-handler permission enforcement are **not yet implemented**.
+- Session storage layer shipped: `internal/sessions` with `Create`, `Validate`, `Delete`. Tokens are SHA-256 hashed before storage; archived users are rejected on validation.
+- Cookie-based session middleware, auth endpoints (`/auth/me`, `/auth/logout`), and per-handler membership enforcement are **not yet implemented** (PRs 2–6 of Phase 1).
 
 ### Target
 

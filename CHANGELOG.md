@@ -11,8 +11,27 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added session storage foundation (`internal/sessions`): `Create`, `Validate`, `Delete`
+- Added SHA-256 token hashing — raw tokens never stored in the database
+- Added archived-user rejection in session validation (`ErrUserArchived`)
+- Added migration `0003_create_sessions` with indexes on `user_id` and `expires_at`
+- Added workspace-scoped URL routing (`/{workspace}/...`)
+- Added Kanban and Scrum project templates with localized status names per user language
+- Added project creation wizard: step 1 template selection, step 2 name and key
+- Added empty states with action buttons across all pages (no workspace, no projects, no boards, no statuses)
+- Added settings page with language switcher
+- Added projects overview dashboard at `/{workspace}/`
 - Added a root changelog to track notable project changes
 - Added a README link to the changelog
+
+### Changed
+- Changed workspace creation to add creator as owner member in a single transaction
+- Changed sidebar workspace selection to sync via URL navigation instead of local state
+- Changed board view to sync statuses on navigation via `$effect`
+
+### Fixed
+- Fixed Go nil slice serialization returning JSON `null` instead of `[]`
+- Fixed board not updating when switching between projects
 
 ---
 

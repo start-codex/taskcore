@@ -72,7 +72,7 @@ What exists in the codebase today:
 **Not yet shipped:**
 
 - Drag-and-drop board UI (backend ready; frontend not wired).
-- Cookie-based auth and authorization enforcement (`POST /api/auth/login` exists; full session management and per-handler enforcement are not yet shipped).
+- Cookie-based auth and authorization enforcement (`POST /api/auth/login` exists; session storage layer shipped with hashed tokens and archived-user rejection; middleware, cookie handling, and per-handler enforcement are not yet shipped).
 - Wiki/documentation pages.
 - Full methodology customization (custom fields per issue, configurable transition rules, richer workflow rules).
 

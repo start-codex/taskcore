@@ -8,7 +8,19 @@ front/.idea
 # macOS
 .DS_Store
 
+# Go build artifacts
+server
+*.exe
+*.test
+*.out
+/bin/
+/dist/
+
 # Docker data directories
 .docker/
+
+# Local development and planning files
+AGENTS.md
+plans/
 
 
