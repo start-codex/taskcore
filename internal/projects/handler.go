@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package projects
 
 import (
@@ -5,7 +10,8 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/respond"
+	"github.com/start-codex/trazawork/internal/authz"
+	"github.com/start-codex/trazawork/internal/respond"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -21,6 +27,13 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, authz.ErrUnauthenticated):
+		respond.Error(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, authz.ErrForbidden):
+		respond.Error(w, http.StatusForbidden, "forbidden")
+	case errors.Is(err, authz.ErrWorkspaceNotFound),
+		errors.Is(err, authz.ErrProjectNotFound):
+		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrProjectNotFound), errors.Is(err, ErrMemberNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateProjectKey):
@@ -32,6 +45,11 @@ func fail(w http.ResponseWriter, err error) {
 
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name        string `json:"name"`
 			Key         string `json:"key"`
@@ -66,7 +84,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 
 func handleList(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := ListProjects(r.Context(), db, r.PathValue("workspaceID"))
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
+		list, err := ListProjects(r.Context(), db, wsID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -77,7 +100,12 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		project, err := GetProject(r.Context(), db, r.PathValue("projectID"))
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		project, err := GetProject(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -88,7 +116,12 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := ArchiveProject(r.Context(), db, r.PathValue("projectID")); err != nil {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := ArchiveProject(r.Context(), db, projID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -98,7 +131,12 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 
 func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		members, err := ListMembers(r.Context(), db, r.PathValue("projectID"))
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		members, err := ListMembers(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -109,6 +147,12 @@ func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 
 func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projID := r.PathValue("projectID")
+		wsID, err := authz.RequireProjectMembership(r.Context(), db, projID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			UserID string `json:"user_id"`
 			Role   string `json:"role"`
@@ -117,8 +161,14 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
+		// The target user must be a workspace member before being added to a project.
+		targetCtx := authz.WithUserID(r.Context(), body.UserID)
+		if err := authz.RequireWorkspaceMembership(targetCtx, db, wsID); err != nil {
+			respond.Error(w, http.StatusUnprocessableEntity, "user is not a workspace member")
+			return
+		}
 		params := AddMemberParams{
-			ProjectID: r.PathValue("projectID"),
+			ProjectID: projID,
 			UserID:    body.UserID,
 			Role:      body.Role,
 		}
@@ -137,6 +187,11 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 
 func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Role string `json:"role"`
 		}
@@ -164,7 +219,12 @@ func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 
 func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := RemoveMember(r.Context(), db, r.PathValue("projectID"), r.PathValue("userID"))
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		err := RemoveMember(r.Context(), db, projID, r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return

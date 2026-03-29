@@ -1,6 +1,6 @@
-# Taskcore
+# Traza Work
 
-Taskcore is an open-source workflow platform for teams. Capture ideas, plan work, track execution, and follow through — regardless of your industry or methodology.
+Traza Work is a source-available workflow platform for teams. Capture ideas, plan work, track execution, and follow through — regardless of your industry or methodology.
 
 Software delivery is the first deeply defined workflow: documentation, decisions, and architecture feed the backlog, roadmap, and sprints. The long-term goal is broader: any team, any domain.
 
@@ -8,20 +8,20 @@ Software delivery is the first deeply defined workflow: documentation, decisions
 
 - Software-first, not software-only — built for engineering teams today, extensible to any team tomorrow.
 - Documentation and planning in one place — decisions, business rules, and architecture drive the backlog, not a separate wiki.
-- Self-hostable and open source — no vendor lock-in, no paywalled core features.
+- Self-hostable — no vendor lock-in, no paywalled core features.
 - Simple to start, flexible to grow — works for a two-person team and scales to an organization.
 
-## Why Taskcore
+## Why Traza Work
 
-| | Taskcore | Jira + Confluence |
+| | Traza Work | Jira + Confluence |
 |---|---|---|
 | Self-hosted | Yes | Paid / complex |
 | Docs and planning together | Yes (target) | Split products |
 | Core workflow features | All open | Many behind paywall |
 | Cross-industry templates | Planned | Available but expensive |
-| Open source | Yes | No |
+| Source-available | Yes (BSL 1.1) | No |
 
-Jira is a useful reference for software workflows. Taskcore is not a clone — it is a workflow platform with its own identity.
+Jira is a useful reference for software workflows. Traza Work is not a clone — it is a workflow platform with its own identity.
 
 ## Current product baseline
 
@@ -58,8 +58,8 @@ Summary:
 ## Getting started
 
 ```bash
-git clone https://github.com/start-codex/taskcore
-cd taskcore
+git clone https://github.com/start-codex/trazawork
+cd trazawork
 docker compose up --build
 ```
 
@@ -105,6 +105,16 @@ All responses follow the envelope format:
 - Roadmap: [docs/05-roadmap.md](docs/05-roadmap.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributions require signing our [Contributor License Agreement](CLA.md).
+
 ## License
 
-AGPL-3.0 — see [LICENSE](LICENSE) for details.
+Business Source License 1.1 — see [LICENSE](LICENSE) for details.
+
+- **Self-hosting**: permitted for your own internal business purposes.
+- **Competing SaaS**: not permitted under BSL. Contact licensing@startcodex.com for commercial licensing.
+- **Change date**: each version converts to Apache License 2.0 four years after release.
+
+Traza Work is source-available. [Traza Work Cloud](https://trazawork.com) is a commercial SaaS product maintained by Start Codex SAS.

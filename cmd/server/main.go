@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package main
 
 import (
@@ -11,14 +16,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/start-codex/taskcode/internal/boards"
-	"github.com/start-codex/taskcode/internal/issues"
-	"github.com/start-codex/taskcode/internal/issuetypes"
-	"github.com/start-codex/taskcode/internal/projects"
-	"github.com/start-codex/taskcode/internal/statuses"
-	"github.com/start-codex/taskcode/internal/users"
-	"github.com/start-codex/taskcode/internal/workspaces"
-	"github.com/start-codex/taskcode/migrations"
+	"github.com/start-codex/trazawork/migrations"
 )
 
 func main() {
@@ -52,21 +50,8 @@ func main() {
 	}
 	slog.Info("migrations applied")
 
-	// API routes live on a sub-mux so they're served under /api/*.
-	// Each domain package registers paths like "POST /users" and the
-	// StripPrefix removes "/api" before matching, so no domain package
-	// needs to know about the prefix.
-	api := http.NewServeMux()
-	users.RegisterRoutes(api, db)
-	workspaces.RegisterRoutes(api, db)
-	projects.RegisterRoutes(api, db)
-	statuses.RegisterRoutes(api, db)
-	issuetypes.RegisterRoutes(api, db)
-	boards.RegisterRoutes(api, db)
-	issues.RegisterRoutes(api, db)
-
 	mux := http.NewServeMux()
-	mux.Handle("/api/", http.StripPrefix("/api", withAuth(api, db)))
+	mux.Handle("/api/", http.StripPrefix("/api", newAPIHandler(db)))
 	registerUI(mux)
 
 	srv := &http.Server{

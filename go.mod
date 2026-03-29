@@ -1,4 +1,4 @@
-module github.com/start-codex/taskcode
+module github.com/start-codex/trazawork
 
 go 1.26
 

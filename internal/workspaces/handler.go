@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package workspaces
 
 import (
@@ -5,7 +10,8 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/respond"
+	"github.com/start-codex/trazawork/internal/authz"
+	"github.com/start-codex/trazawork/internal/respond"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -21,6 +27,12 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, authz.ErrUnauthenticated):
+		respond.Error(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, authz.ErrForbidden):
+		respond.Error(w, http.StatusForbidden, "forbidden")
+	case errors.Is(err, authz.ErrWorkspaceNotFound):
+		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrWorkspaceNotFound), errors.Is(err, ErrMemberNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateSlug):
@@ -32,6 +44,11 @@ func fail(w http.ResponseWriter, err error) {
 
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		authedUserID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name    string `json:"name"`
 			Slug    string `json:"slug"`
@@ -40,6 +57,13 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 		if err := respond.Decode(r, &body); err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
+		}
+		if body.OwnerID != "" && body.OwnerID != authedUserID {
+			respond.Error(w, http.StatusForbidden, "owner_id must match authenticated user")
+			return
+		}
+		if body.OwnerID == "" {
+			body.OwnerID = authedUserID
 		}
 		params := CreateWorkspaceParams{Name: body.Name, Slug: body.Slug, OwnerID: body.OwnerID}
 		if err := params.Validate(); err != nil {
@@ -57,7 +81,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ws, err := GetWorkspace(r.Context(), db, r.PathValue("workspaceID"))
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
+		ws, err := GetWorkspace(r.Context(), db, wsID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -68,7 +97,12 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := ArchiveWorkspace(r.Context(), db, r.PathValue("workspaceID")); err != nil {
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := ArchiveWorkspace(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -78,7 +112,12 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 
 func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		members, err := ListMembers(r.Context(), db, r.PathValue("workspaceID"))
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
+		members, err := ListMembers(r.Context(), db, wsID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -89,6 +128,11 @@ func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 
 func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			UserID string `json:"user_id"`
 			Role   string `json:"role"`
@@ -117,6 +161,11 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 
 func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Role string `json:"role"`
 		}
@@ -144,7 +193,12 @@ func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 
 func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := RemoveMember(r.Context(), db, r.PathValue("workspaceID"), r.PathValue("userID"))
+		wsID := r.PathValue("workspaceID")
+		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
+		err := RemoveMember(r.Context(), db, wsID, r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return

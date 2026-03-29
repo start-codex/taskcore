@@ -1,3 +1,6 @@
+<!-- Copyright (c) 2025 Start Codex SAS. All rights reserved. -->
+<!-- SPDX-License-Identifier: BUSL-1.1 -->
+
 <script lang="ts">
 	import LoginForm from "$lib/components/login-form.svelte";
 </script>
@@ -11,7 +14,7 @@
 					<rect width="8" height="8" x="2" y="14" rx="2" /><rect width="8" height="8" x="14" y="14" rx="2" />
 				</svg>
 			</div>
-			Taskcore
+			Traza Work
 		</a>
 		<LoginForm />
 	</div>

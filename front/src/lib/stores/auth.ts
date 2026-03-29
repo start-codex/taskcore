@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+
 import { writable } from 'svelte/store';
 import type { User } from '$lib/api';
 

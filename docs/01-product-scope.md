@@ -11,7 +11,7 @@ Current project management tools tend to be:
 
 ## Vision
 
-Taskcore is a self-hostable, open-source workflow platform where any team can manage ideas, projects, and work using methodologies that fit their area.
+Traza Work is a self-hostable, open-source workflow platform where any team can manage ideas, projects, and work using methodologies that fit their area.
 
 Software delivery is the first fully modeled workflow. The long-term goal is broader: a dental clinic, a law firm, a marketing agency, or an engineering team should all be able to track what needs to happen, what is happening, and what is done — without paying for enterprise plans or stitching together two separate tools.
 
@@ -25,9 +25,9 @@ workspace → project → work items
 
 Issues (the current implementation term) belong to the project, not to the board. A board is a view and configuration layer — it defines how work is visualized and in what order columns appear. The same work item can appear on multiple boards if needed.
 
-The broader target-vision term is **work item**. As Taskcore grows to support cross-industry templates, "issue" will remain valid for software contexts while "work item" covers the general case.
+The broader target-vision term is **work item**. As Traza Work grows to support cross-industry templates, "issue" will remain valid for software contexts while "work item" covers the general case.
 
-## What makes Taskcore different
+## What makes Traza Work different
 
 - **Documentation as the source of planning** — not a passive wiki attached as an afterthought, but the starting point for backlog creation, roadmap definition, sprint scope, and review artifacts.
 - **No Jira/Confluence split** — project pages, decision records, and execution artifacts live in the same project, not in separate products.
@@ -86,7 +86,7 @@ In software teams, the biggest gap is not the task board — it is the broken co
 
 Decisions get made in meetings and disappear. Business rules live in someone's head. Architecture choices are buried in old pull requests. Sprint planning happens without context.
 
-Taskcore's target vision for software: **documentation is the source of planning**, not a passive wiki.
+Traza Work's target vision for software: **documentation is the source of planning**, not a passive wiki.
 
 Teams document:
 

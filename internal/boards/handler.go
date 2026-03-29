@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package boards
 
 import (
@@ -5,7 +10,8 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/respond"
+	"github.com/start-codex/trazawork/internal/authz"
+	"github.com/start-codex/trazawork/internal/respond"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -22,6 +28,15 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, authz.ErrUnauthenticated):
+		respond.Error(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, authz.ErrForbidden):
+		respond.Error(w, http.StatusForbidden, "forbidden")
+	case errors.Is(err, authz.ErrWorkspaceNotFound),
+		errors.Is(err, authz.ErrProjectNotFound),
+		errors.Is(err, authz.ErrBoardNotFound),
+		errors.Is(err, authz.ErrColumnNotFound):
+		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrBoardNotFound), errors.Is(err, ErrColumnNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateBoardName), errors.Is(err, ErrDuplicateColumnName):
@@ -33,6 +48,11 @@ func fail(w http.ResponseWriter, err error) {
 
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name        string `json:"name"`
 			Type        string `json:"type"`
@@ -63,7 +83,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 
 func handleList(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := ListBoards(r.Context(), db, r.PathValue("projectID"))
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		list, err := ListBoards(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -74,7 +99,12 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		b, err := GetBoard(r.Context(), db, r.PathValue("boardID"))
+		boardID := r.PathValue("boardID")
+		if _, _, err := authz.RequireBoardAccess(r.Context(), db, boardID); err != nil {
+			fail(w, err)
+			return
+		}
+		b, err := GetBoard(r.Context(), db, boardID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -85,7 +115,12 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := ArchiveBoard(r.Context(), db, r.PathValue("boardID")); err != nil {
+		boardID := r.PathValue("boardID")
+		if _, _, err := authz.RequireBoardAccess(r.Context(), db, boardID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := ArchiveBoard(r.Context(), db, boardID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -95,6 +130,11 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 
 func handleAddColumn(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		boardID := r.PathValue("boardID")
+		if _, _, err := authz.RequireBoardAccess(r.Context(), db, boardID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name string `json:"name"`
 		}
@@ -118,7 +158,12 @@ func handleAddColumn(db *sqlx.DB) http.HandlerFunc {
 
 func handleListColumns(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cols, err := ListColumns(r.Context(), db, r.PathValue("boardID"))
+		boardID := r.PathValue("boardID")
+		if _, _, err := authz.RequireBoardAccess(r.Context(), db, boardID); err != nil {
+			fail(w, err)
+			return
+		}
+		cols, err := ListColumns(r.Context(), db, boardID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -129,7 +174,12 @@ func handleListColumns(db *sqlx.DB) http.HandlerFunc {
 
 func handleArchiveColumn(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := ArchiveColumn(r.Context(), db, r.PathValue("columnID")); err != nil {
+		colID := r.PathValue("columnID")
+		if _, _, _, err := authz.RequireColumnAccess(r.Context(), db, colID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := ArchiveColumn(r.Context(), db, colID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -139,6 +189,11 @@ func handleArchiveColumn(db *sqlx.DB) http.HandlerFunc {
 
 func handleAssignStatus(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		colID := r.PathValue("columnID")
+		if _, _, _, err := authz.RequireColumnAccess(r.Context(), db, colID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			StatusID string `json:"status_id"`
 		}
@@ -156,7 +211,12 @@ func handleAssignStatus(db *sqlx.DB) http.HandlerFunc {
 
 func handleUnassignStatus(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := UnassignStatus(r.Context(), db, r.PathValue("columnID"), r.PathValue("statusID")); err != nil {
+		colID := r.PathValue("columnID")
+		if _, _, _, err := authz.RequireColumnAccess(r.Context(), db, colID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := UnassignStatus(r.Context(), db, colID, r.PathValue("statusID")); err != nil {
 			fail(w, err)
 			return
 		}

@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package boards
 
 import (
@@ -7,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/pgutil"
+	"github.com/start-codex/trazawork/internal/pgutil"
 )
 
 const boardCols = `id, project_id, name, type, filter_query, created_at, updated_at, archived_at`
@@ -186,4 +191,3 @@ func unassignStatus(ctx context.Context, db *sqlx.DB, boardColumnID, statusID st
 	}
 	return nil
 }
-

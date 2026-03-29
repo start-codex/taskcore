@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package users
 
 import (
@@ -6,9 +11,9 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/authctx"
-	"github.com/start-codex/taskcode/internal/respond"
-	"github.com/start-codex/taskcode/internal/sessions"
+	"github.com/start-codex/trazawork/internal/authz"
+	"github.com/start-codex/trazawork/internal/respond"
+	"github.com/start-codex/trazawork/internal/sessions"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -153,8 +158,8 @@ func handleLogout(db *sqlx.DB) http.HandlerFunc {
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		authedUserID, ok := authctx.UserIDFromContext(r.Context())
-		if !ok {
+		authedUserID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
 			respond.Error(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
