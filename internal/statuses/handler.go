@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/taskcode/internal/authz"
 	"github.com/start-codex/taskcode/internal/respond"
 )
 
@@ -18,6 +19,13 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, authz.ErrUnauthenticated):
+		respond.Error(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, authz.ErrForbidden):
+		respond.Error(w, http.StatusForbidden, "forbidden")
+	case errors.Is(err, authz.ErrWorkspaceNotFound),
+		errors.Is(err, authz.ErrProjectNotFound):
+		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrStatusNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateStatus):
@@ -30,6 +38,11 @@ func fail(w http.ResponseWriter, err error) {
 
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name     string `json:"name"`
 			Category string `json:"category"`
@@ -58,7 +71,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 
 func handleList(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := ListStatuses(r.Context(), db, r.PathValue("projectID"))
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		list, err := ListStatuses(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -69,6 +87,11 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 
 func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name     string `json:"name"`
 			Category string `json:"category"`
@@ -98,7 +121,12 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := ArchiveStatus(r.Context(), db, r.PathValue("projectID"), r.PathValue("statusID")); err != nil {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := ArchiveStatus(r.Context(), db, projID, r.PathValue("statusID")); err != nil {
 			fail(w, err)
 			return
 		}

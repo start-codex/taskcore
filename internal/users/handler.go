@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/authctx"
+	"github.com/start-codex/taskcode/internal/authz"
 	"github.com/start-codex/taskcode/internal/respond"
 	"github.com/start-codex/taskcode/internal/sessions"
 )
@@ -153,8 +153,8 @@ func handleLogout(db *sqlx.DB) http.HandlerFunc {
 
 func handleGet(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		authedUserID, ok := authctx.UserIDFromContext(r.Context())
-		if !ok {
+		authedUserID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
 			respond.Error(w, http.StatusUnauthorized, "authentication required")
 			return
 		}

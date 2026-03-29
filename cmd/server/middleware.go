@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/authctx"
+	"github.com/start-codex/taskcode/internal/authz"
 	"github.com/start-codex/taskcode/internal/respond"
 	"github.com/start-codex/taskcode/internal/sessions"
 )
@@ -79,7 +79,7 @@ func withAuth(next http.Handler, db *sqlx.DB) http.Handler {
 			return
 		}
 
-		ctx := authctx.WithUserID(r.Context(), session.UserID)
+		ctx := authz.WithUserID(r.Context(), session.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

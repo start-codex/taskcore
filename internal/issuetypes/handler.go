@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/taskcode/internal/authz"
 	"github.com/start-codex/taskcode/internal/respond"
 )
 
@@ -17,6 +18,13 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, authz.ErrUnauthenticated):
+		respond.Error(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, authz.ErrForbidden):
+		respond.Error(w, http.StatusForbidden, "forbidden")
+	case errors.Is(err, authz.ErrWorkspaceNotFound),
+		errors.Is(err, authz.ErrProjectNotFound):
+		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrIssueTypeNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateIssueType):
@@ -29,6 +37,11 @@ func fail(w http.ResponseWriter, err error) {
 
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			Name  string `json:"name"`
 			Icon  string `json:"icon"`
@@ -59,7 +72,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 
 func handleList(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := ListIssueTypes(r.Context(), db, r.PathValue("projectID"))
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		list, err := ListIssueTypes(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -70,7 +88,12 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := ArchiveIssueType(r.Context(), db, r.PathValue("projectID"), r.PathValue("issueTypeID")); err != nil {
+		projID := r.PathValue("projectID")
+		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := ArchiveIssueType(r.Context(), db, projID, r.PathValue("issueTypeID")); err != nil {
 			fail(w, err)
 			return
 		}

@@ -24,7 +24,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Added `withAuth` session middleware with allowlist for public routes
 - Added `GET /auth/me` endpoint — always 200, distinguishes auth errors from internal errors
 - Added `POST /auth/logout` endpoint — idempotent, clears cookie, returns 204
-- Added `internal/authctx` package for typed context user ID helpers
+- Added `internal/authz` package with membership authorization helpers and context user ID helpers
+- Added workspace membership enforcement on all API routes (read and write)
+- Added project-member creation guard: target user must be a workspace member
 - Added `sessions.IsAuthError` helper for centralized error classification
 - Added a root changelog to track notable project changes
 - Added a README link to the changelog
@@ -33,6 +35,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Changed `POST /auth/login` to create session and set `HttpOnly` cookie with `SameSite=Strict`
 - Changed `GET /users/{userID}` to enforce self-only access (403 on mismatch)
 - Changed login to reject archived users before session creation
+- Changed `internal/authctx` consolidated into `internal/authz`
+- Changed `POST /workspaces` to reject `owner_id` that doesn't match authenticated user
+- Changed authz resource resolution to allow archived projects, boards, and columns (domain handlers decide visibility)
 - Changed workspace creation to add creator as owner member in a single transaction
 - Changed sidebar workspace selection to sync via URL navigation instead of local state
 - Changed board view to sync statuses on navigation via `$effect`
