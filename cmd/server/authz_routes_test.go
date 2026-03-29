@@ -428,5 +428,218 @@ func TestContractCleanup_IssueCreate(t *testing.T) {
 	}
 }
 
+// TestAdminWiring_WorkspaceArchive verifies DELETE /workspaces/{id}
+// returns 403 for members and 204 for admins.
+func TestAdminWiring_WorkspaceArchive(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+
+	memberToken := loginCookie(t, db, member)
+	adminToken := loginCookie(t, db, admin)
+
+	// Member → 403
+	env := doRequest(t, srv, "DELETE", "/workspaces/"+wsID, memberToken)
+	if env.Status != 403 {
+		t.Fatalf("member DELETE /workspaces/{id}: status = %d, want 403", env.Status)
+	}
+
+	// Admin → 204
+	env = doRequest(t, srv, "DELETE", "/workspaces/"+wsID, adminToken)
+	if env.Status != 204 {
+		t.Fatalf("admin DELETE /workspaces/{id}: status = %d, want 204 (error: %s)", env.Status, env.Error)
+	}
+}
+
+// TestAdminWiring_WorkspaceMembers verifies GET/POST /workspaces/{id}/members
+// returns 403 for members and success for admins.
+func TestAdminWiring_WorkspaceMembers(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	newUser := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+
+	memberToken := loginCookie(t, db, member)
+	adminToken := loginCookie(t, db, admin)
+
+	// Member GET /workspaces/{id}/members → 403
+	env := doRequest(t, srv, "GET", "/workspaces/"+wsID+"/members", memberToken)
+	if env.Status != 403 {
+		t.Fatalf("member GET /workspaces/{id}/members: status = %d, want 403", env.Status)
+	}
+
+	// Admin GET /workspaces/{id}/members → 200
+	env = doRequest(t, srv, "GET", "/workspaces/"+wsID+"/members", adminToken)
+	if env.Status != 200 {
+		t.Fatalf("admin GET /workspaces/{id}/members: status = %d, want 200 (error: %s)", env.Status, env.Error)
+	}
+
+	// Member POST /workspaces/{id}/members → 403
+	envD := doRequestWithBody(t, srv, "POST", "/workspaces/"+wsID+"/members", memberToken, map[string]string{
+		"user_id": newUser, "role": "member",
+	})
+	if envD.Status != 403 {
+		t.Fatalf("member POST /workspaces/{id}/members: status = %d, want 403", envD.Status)
+	}
+
+	// Admin POST /workspaces/{id}/members → 201
+	envD = doRequestWithBody(t, srv, "POST", "/workspaces/"+wsID+"/members", adminToken, map[string]string{
+		"user_id": newUser, "role": "member",
+	})
+	if envD.Status != 201 {
+		t.Fatalf("admin POST /workspaces/{id}/members: status = %d, want 201 (error: %s)", envD.Status, envD.Error)
+	}
+}
+
+// TestAdminWiring_ProjectCreate verifies POST /workspaces/{id}/projects
+// returns 403 for members and 201 for admins.
+func TestAdminWiring_ProjectCreate(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+
+	memberToken := loginCookie(t, db, member)
+	adminToken := loginCookie(t, db, admin)
+
+	suffix := testpg.UniqueSuffix(t, db)
+
+	// Member → 403
+	envD := doRequestWithBody(t, srv, "POST", "/workspaces/"+wsID+"/projects", memberToken, map[string]string{
+		"name": "Proj " + suffix, "key": "PM" + suffix[:2],
+	})
+	if envD.Status != 403 {
+		t.Fatalf("member POST /workspaces/{id}/projects: status = %d, want 403", envD.Status)
+	}
+
+	// Admin → 201
+	envD = doRequestWithBody(t, srv, "POST", "/workspaces/"+wsID+"/projects", adminToken, map[string]string{
+		"name": "Proj " + suffix, "key": "PA" + suffix[:2],
+	})
+	if envD.Status != 201 {
+		t.Fatalf("admin POST /workspaces/{id}/projects: status = %d, want 201 (error: %s)", envD.Status, envD.Error)
+	}
+}
+
+// TestAdminWiring_ProjectArchive verifies DELETE /projects/{id}
+// returns 403 for members and 204 for admins.
+func TestAdminWiring_ProjectArchive(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+	projID := testpg.SeedProject(t, db, wsID, "PADL")
+
+	memberToken := loginCookie(t, db, member)
+	adminToken := loginCookie(t, db, admin)
+
+	// Member → 403
+	env := doRequest(t, srv, "DELETE", "/projects/"+projID, memberToken)
+	if env.Status != 403 {
+		t.Fatalf("member DELETE /projects/{id}: status = %d, want 403", env.Status)
+	}
+
+	// Admin → 204
+	env = doRequest(t, srv, "DELETE", "/projects/"+projID, adminToken)
+	if env.Status != 204 {
+		t.Fatalf("admin DELETE /projects/{id}: status = %d, want 204 (error: %s)", env.Status, env.Error)
+	}
+}
+
+// TestAdminWiring_ProjectMembers verifies GET/POST /projects/{id}/members
+// returns 403 for members and success for admins.
+func TestAdminWiring_ProjectMembers(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	newUser := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+	seedMember(t, db, wsID, newUser, "member")
+	projID := testpg.SeedProject(t, db, wsID, "PMBR")
+
+	memberToken := loginCookie(t, db, member)
+	adminToken := loginCookie(t, db, admin)
+
+	// Member GET /projects/{id}/members → 403
+	env := doRequest(t, srv, "GET", "/projects/"+projID+"/members", memberToken)
+	if env.Status != 403 {
+		t.Fatalf("member GET /projects/{id}/members: status = %d, want 403", env.Status)
+	}
+
+	// Admin GET /projects/{id}/members → 200
+	env = doRequest(t, srv, "GET", "/projects/"+projID+"/members", adminToken)
+	if env.Status != 200 {
+		t.Fatalf("admin GET /projects/{id}/members: status = %d, want 200 (error: %s)", env.Status, env.Error)
+	}
+
+	// Member POST /projects/{id}/members → 403
+	envD := doRequestWithBody(t, srv, "POST", "/projects/"+projID+"/members", memberToken, map[string]string{
+		"user_id": newUser, "role": "member",
+	})
+	if envD.Status != 403 {
+		t.Fatalf("member POST /projects/{id}/members: status = %d, want 403", envD.Status)
+	}
+
+	// Admin POST /projects/{id}/members → 201
+	envD = doRequestWithBody(t, srv, "POST", "/projects/"+projID+"/members", adminToken, map[string]string{
+		"user_id": newUser, "role": "member",
+	})
+	if envD.Status != 201 {
+		t.Fatalf("admin POST /projects/{id}/members: status = %d, want 201 (error: %s)", envD.Status, envD.Error)
+	}
+}
+
+// TestAdminWiring_MemberReadNoRegression verifies GET /workspaces/{id} and
+// GET /projects/{id} still return 200 for members (not broken by admin checks).
+func TestAdminWiring_MemberReadNoRegression(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	member := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, member, "member")
+	projID := testpg.SeedProject(t, db, wsID, "NREG")
+
+	token := loginCookie(t, db, member)
+
+	env := doRequest(t, srv, "GET", "/workspaces/"+wsID, token)
+	if env.Status != 200 {
+		t.Fatalf("member GET /workspaces/{id}: status = %d, want 200", env.Status)
+	}
+
+	env = doRequest(t, srv, "GET", "/projects/"+projID, token)
+	if env.Status != 200 {
+		t.Fatalf("member GET /projects/{id}: status = %d, want 200", env.Status)
+	}
+}
+
 // Ensure authz import is used (it's needed for the test to compile with the right module).
 var _ = authz.ErrForbidden

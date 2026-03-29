@@ -37,6 +37,21 @@ func isMember(ctx context.Context, db *sqlx.DB, workspaceID, userID string) (boo
 	return exists, nil
 }
 
+func memberRole(ctx context.Context, db *sqlx.DB, workspaceID, userID string) (string, error) {
+	var role string
+	err := db.GetContext(ctx, &role,
+		`SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND archived_at IS NULL`,
+		workspaceID, userID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", ErrForbidden
+		}
+		return "", fmt.Errorf("get member role: %w", err)
+	}
+	return role, nil
+}
+
 func projectWorkspaceID(ctx context.Context, db *sqlx.DB, projectID string) (string, error) {
 	var wsID string
 	err := db.GetContext(ctx, &wsID,

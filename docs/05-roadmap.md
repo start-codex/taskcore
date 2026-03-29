@@ -49,7 +49,7 @@ Close the gap between what the backend supports and what the UI delivers. Delive
 - PR 2 `[shipped]` — Auth middleware (`withAuth`) and endpoints: `POST /auth/login` (cookie), `GET /auth/me`, `POST /auth/logout`. Self-only `GET /users/{userID}`.
 - PR 3 `[shipped]` — Membership authorization: `internal/authz` with context helpers and workspace membership enforcement on all API routes (read and write). Consolidated `internal/authctx` into `internal/authz`.
 - PR 4 `[shipped]` — Remove client-controlled identity: drop `owner_id`, `reporter_id`, `user_id` from API contracts; derive from session.
-- PR 5 `[pending]` — Admin/owner authorization for workspace and project administration.
+- PR 5 `[shipped]` — Admin/owner authorization for workspace and project administration.
 - PR 6 `[pending]` — Frontend session migration (replace auth localStorage with `/auth/me`) and workflow configuration admin enforcement.
 
 **Other Phase 1 items:**

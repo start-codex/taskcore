@@ -46,7 +46,7 @@ func fail(w http.ResponseWriter, err error) {
 func handleCreate(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsID := r.PathValue("workspaceID")
-		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -117,7 +117,12 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projID := r.PathValue("projectID")
-		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+		wsID, err := authz.RequireProjectMembership(r.Context(), db, projID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -132,7 +137,12 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projID := r.PathValue("projectID")
-		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+		wsID, err := authz.RequireProjectMembership(r.Context(), db, projID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -150,6 +160,10 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 		projID := r.PathValue("projectID")
 		wsID, err := authz.RequireProjectMembership(r.Context(), db, projID)
 		if err != nil {
+			fail(w, err)
+			return
+		}
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -188,7 +202,12 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projID := r.PathValue("projectID")
-		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+		wsID, err := authz.RequireProjectMembership(r.Context(), db, projID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -220,11 +239,16 @@ func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projID := r.PathValue("projectID")
-		if _, err := authz.RequireProjectMembership(r.Context(), db, projID); err != nil {
+		wsID, err := authz.RequireProjectMembership(r.Context(), db, projID)
+		if err != nil {
 			fail(w, err)
 			return
 		}
-		err := RemoveMember(r.Context(), db, projID, r.PathValue("userID"))
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
+			fail(w, err)
+			return
+		}
+		err = RemoveMember(r.Context(), db, projID, r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return

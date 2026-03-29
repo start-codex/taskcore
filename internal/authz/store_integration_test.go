@@ -103,6 +103,79 @@ func TestRequireWorkspaceMembership_ArchivedWorkspace(t *testing.T) {
 	}
 }
 
+func TestMemberRole_Integration(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+
+	owner := testpg.SeedUser(t, db)
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	nonMember := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, owner, "owner")
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+
+	tests := []struct {
+		name     string
+		userID   string
+		wantRole string
+		wantErr  error
+	}{
+		{name: "owner", userID: owner, wantRole: "owner"},
+		{name: "admin", userID: admin, wantRole: "admin"},
+		{name: "member", userID: member, wantRole: "member"},
+		{name: "non-member", userID: nonMember, wantErr: ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			role, err := memberRole(context.Background(), db, wsID, tt.userID)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tt.wantErr)
+			}
+			if err == nil && role != tt.wantRole {
+				t.Fatalf("role = %q, want %q", role, tt.wantRole)
+			}
+		})
+	}
+}
+
+func TestRequireWorkspaceAdmin_Integration(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+
+	owner := testpg.SeedUser(t, db)
+	admin := testpg.SeedUser(t, db)
+	member := testpg.SeedUser(t, db)
+	nonMember := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, owner, "owner")
+	seedMember(t, db, wsID, admin, "admin")
+	seedMember(t, db, wsID, member, "member")
+
+	tests := []struct {
+		name    string
+		userID  string
+		wsID    string
+		wantErr error
+	}{
+		{name: "owner ok", userID: owner, wsID: wsID},
+		{name: "admin ok", userID: admin, wsID: wsID},
+		{name: "member forbidden", userID: member, wsID: wsID, wantErr: ErrForbidden},
+		{name: "non-member forbidden", userID: nonMember, wsID: wsID, wantErr: ErrForbidden},
+		{name: "workspace not found", userID: owner, wsID: "00000000-0000-0000-0000-000000000000", wantErr: ErrWorkspaceNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := WithUserID(context.Background(), tt.userID)
+			err := RequireWorkspaceAdmin(ctx, db, tt.wsID)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestRequireProjectMembership_Integration(t *testing.T) {
 	db := testpg.Open(t)
 	testpg.EnsureMigrated(t, db)

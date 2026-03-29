@@ -28,6 +28,7 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Added workspace membership enforcement on all API routes (read and write)
 - Added project-member creation guard: target user must be a workspace member
 - Added `sessions.IsAuthError` helper for centralized error classification
+- Added `RequireWorkspaceAdmin` to `internal/authz` for admin/owner role enforcement
 - Added BSL 1.1 license (replaces AGPL-3.0) with Apache 2.0 change license after 4 years per version
 - Added Contributor License Agreement (CLA.md)
 - Added Contributing guide (CONTRIBUTING.md)
@@ -42,6 +43,8 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Changed `POST /workspaces` to derive owner from authenticated session (removed `owner_id` from request body)
 - Changed `GET /workspaces` to derive user from authenticated session (removed `user_id` query parameter)
 - Changed `POST /projects/{projectID}/issues` to derive reporter from authenticated session (removed `reporter_id` from request body)
+- Changed workspace admin routes (`DELETE /workspaces/{id}`, member management) to require admin/owner role
+- Changed project admin routes (`POST /workspaces/{id}/projects`, `DELETE /projects/{id}`, member management) to require workspace admin/owner role
 - Changed authz resource resolution to allow archived projects, boards, and columns (domain handlers decide visibility)
 - Changed project name from Taskcore to Traza Work (domain: trazawork.com)
 - Changed license from AGPL-3.0 to BSL 1.1

@@ -90,7 +90,7 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 func handleArchive(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsID := r.PathValue("workspaceID")
-		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -105,7 +105,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsID := r.PathValue("workspaceID")
-		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -121,7 +121,7 @@ func handleListMembers(db *sqlx.DB) http.HandlerFunc {
 func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsID := r.PathValue("workspaceID")
-		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -154,7 +154,7 @@ func handleAddMember(db *sqlx.DB) http.HandlerFunc {
 func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsID := r.PathValue("workspaceID")
-		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -186,7 +186,7 @@ func handleUpdateMemberRole(db *sqlx.DB) http.HandlerFunc {
 func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsID := r.PathValue("workspaceID")
-		if err := authz.RequireWorkspaceMembership(r.Context(), db, wsID); err != nil {
+		if err := authz.RequireWorkspaceAdmin(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}

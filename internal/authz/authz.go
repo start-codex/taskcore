@@ -70,6 +70,37 @@ func RequireWorkspaceMembership(ctx context.Context, db *sqlx.DB, workspaceID st
 	return nil
 }
 
+// RequireWorkspaceAdmin verifies that the authenticated user has admin or owner
+// role in the given workspace. Returns ErrWorkspaceNotFound if the workspace
+// does not exist (or is archived), ErrForbidden if the user is not admin/owner.
+func RequireWorkspaceAdmin(ctx context.Context, db *sqlx.DB, workspaceID string) error {
+	if db == nil {
+		return errors.New("db is required")
+	}
+	if workspaceID == "" {
+		return errors.New("workspaceID is required")
+	}
+	userID, err := UserIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	exists, err := workspaceExists(ctx, db, workspaceID)
+	if err != nil {
+		return fmt.Errorf("require workspace admin: %w", err)
+	}
+	if !exists {
+		return ErrWorkspaceNotFound
+	}
+	role, err := memberRole(ctx, db, workspaceID, userID)
+	if err != nil {
+		return err
+	}
+	if role != "admin" && role != "owner" {
+		return ErrForbidden
+	}
+	return nil
+}
+
 // RequireProjectMembership verifies that the authenticated user is a member
 // of the workspace that owns the given project. Returns the resolved
 // workspaceID on success.

@@ -95,6 +95,34 @@ func TestRequireWorkspaceMembership_NoContext(t *testing.T) {
 	}
 }
 
+func TestRequireWorkspaceAdmin_Guards(t *testing.T) {
+	ctx := WithUserID(context.Background(), "user-1")
+	tests := []struct {
+		name        string
+		db          *sqlx.DB
+		workspaceID string
+		wantErr     string
+	}{
+		{name: "nil db", db: nil, workspaceID: "ws-1", wantErr: "db is required"},
+		{name: "empty workspaceID", db: fakeDB(t), workspaceID: "", wantErr: "workspaceID is required"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := RequireWorkspaceAdmin(ctx, tc.db, tc.workspaceID)
+			if err == nil || err.Error() != tc.wantErr {
+				t.Fatalf("error = %v, want %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestRequireWorkspaceAdmin_NoContext(t *testing.T) {
+	err := RequireWorkspaceAdmin(context.Background(), fakeDB(t), "ws-1")
+	if !errors.Is(err, ErrUnauthenticated) {
+		t.Fatalf("error = %v, want ErrUnauthenticated", err)
+	}
+}
+
 func TestRequireProjectMembership_Guards(t *testing.T) {
 	ctx := WithUserID(context.Background(), "user-1")
 	tests := []struct {
