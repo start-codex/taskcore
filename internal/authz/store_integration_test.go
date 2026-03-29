@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package authz
 
 import (
@@ -7,7 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/start-codex/taskcode/internal/testpg"
+	"github.com/start-codex/trazawork/internal/testpg"
 )
 
 func seedMember(t *testing.T, db *sqlx.DB, workspaceID, userID, role string) {

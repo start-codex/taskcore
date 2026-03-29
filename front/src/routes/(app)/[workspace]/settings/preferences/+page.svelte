@@ -1,3 +1,6 @@
+<!-- Copyright (c) 2025 Start Codex SAS. All rights reserved. -->
+<!-- SPDX-License-Identifier: BUSL-1.1 -->
+
 <script lang="ts">
 	import * as Item from '$lib/components/ui/item/index.js';
 	import * as m from '$lib/paraglide/messages';

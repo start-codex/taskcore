@@ -1,6 +1,6 @@
 # Changelog
 
-This file tracks notable changes to Taskcore.
+This file tracks notable changes to Traza Work.
 
 The project does not use tagged releases yet. Until versioning starts, history is recorded using an `Unreleased` section for ongoing work, plus dated milestone entries for committed historical work.
 
@@ -28,6 +28,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Added workspace membership enforcement on all API routes (read and write)
 - Added project-member creation guard: target user must be a workspace member
 - Added `sessions.IsAuthError` helper for centralized error classification
+- Added BSL 1.1 license (replaces AGPL-3.0) with Apache 2.0 change license after 4 years per version
+- Added Contributor License Agreement (CLA.md)
+- Added Contributing guide (CONTRIBUTING.md)
 - Added a root changelog to track notable project changes
 - Added a README link to the changelog
 
@@ -38,6 +41,8 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Changed `internal/authctx` consolidated into `internal/authz`
 - Changed `POST /workspaces` to reject `owner_id` that doesn't match authenticated user
 - Changed authz resource resolution to allow archived projects, boards, and columns (domain handlers decide visibility)
+- Changed project name from Taskcore to Traza Work (domain: trazawork.com)
+- Changed license from AGPL-3.0 to BSL 1.1
 - Changed workspace creation to add creator as owner member in a single transaction
 - Changed sidebar workspace selection to sync via URL navigation instead of local state
 - Changed board view to sync statuses on navigation via `$effect`

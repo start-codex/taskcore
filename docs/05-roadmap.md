@@ -1,6 +1,6 @@
 # Roadmap
 
-Taskcore is a workflow platform. Software delivery is the first deeply defined methodology. Broader cross-industry adoption comes through templates and methodology-aware configuration. Documentation-led planning is a major differentiator.
+Traza Work is a workflow platform. Software delivery is the first deeply defined methodology. Broader cross-industry adoption comes through templates and methodology-aware configuration. Documentation-led planning is a major differentiator.
 
 Each phase has a status label:
 - `[shipped]` — exists in the codebase today.
@@ -61,7 +61,7 @@ Close the gap between what the backend supports and what the UI delivers. Delive
 
 ## Phase 2 — Software workflow depth `[planned]`
 
-Software delivery is the first deeply modeled workflow in Taskcore. This phase brings sprint-based and hierarchy-based planning.
+Software delivery is the first deeply modeled workflow in Traza Work. This phase brings sprint-based and hierarchy-based planning.
 
 Note: software is the first vertical, not the only one.
 
@@ -78,7 +78,7 @@ Note: software is the first vertical, not the only one.
 
 Documentation is the **source of planning context**, not a passive wiki attached as an afterthought.
 
-This phase establishes the core differentiator of Taskcore: teams document their decisions, rules, and architecture, and from that documentation they **plan and refine** their backlog, roadmap, sprint scope, estimations, and reviews.
+This phase establishes the core differentiator of Traza Work: teams document their decisions, rules, and architecture, and from that documentation they **plan and refine** their backlog, roadmap, sprint scope, estimations, and reviews.
 
 The initial implementation is **manual first**: links between documentation and work items are created explicitly by users. No automated generation.
 

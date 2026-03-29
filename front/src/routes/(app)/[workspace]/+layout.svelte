@@ -1,3 +1,6 @@
+<!-- Copyright (c) 2025 Start Codex SAS. All rights reserved. -->
+<!-- SPDX-License-Identifier: BUSL-1.1 -->
+
 <script lang="ts">
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
@@ -55,7 +58,7 @@
 				<Breadcrumb.Root>
 					<Breadcrumb.List>
 						<Breadcrumb.Item class="hidden md:block">
-							<Breadcrumb.Link href="/{data.workspace.slug}">Taskcore</Breadcrumb.Link>
+							<Breadcrumb.Link href="/{data.workspace.slug}">Traza Work</Breadcrumb.Link>
 						</Breadcrumb.Item>
 						<Breadcrumb.Separator class="hidden md:block" />
 						{#each crumbs as crumb, i}

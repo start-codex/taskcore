@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+
 import Root from "./empty.svelte";
 import Header from "./empty-header.svelte";
 import Media from "./empty-media.svelte";

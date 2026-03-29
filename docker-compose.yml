@@ -1,28 +1,28 @@
 services:
   db:
     image: postgres:18-alpine
-    container_name: taskcore-db
+    container_name: trazawork-db
     environment:
-      POSTGRES_USER: ${DB_USER:-taskcore}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-taskcore}
-      POSTGRES_DB: ${DB_NAME:-taskcore}
+      POSTGRES_USER: ${DB_USER:-trazawork}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-trazawork}
+      POSTGRES_DB: ${DB_NAME:-trazawork}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - ./.docker/postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskcore} -d ${DB_NAME:-taskcore}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trazawork} -d ${DB_NAME:-trazawork}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   app:
     build: .
-    container_name: taskcore-app
+    container_name: trazawork-app
     ports:
       - "${APP_PORT:-8080}:8080"
     environment:
-      DATABASE_URL: postgres://${DB_USER:-taskcore}:${DB_PASSWORD:-taskcore}@db:5432/${DB_NAME:-taskcore}?sslmode=disable
+      DATABASE_URL: postgres://${DB_USER:-trazawork}:${DB_PASSWORD:-trazawork}@db:5432/${DB_NAME:-trazawork}?sslmode=disable
       PORT: 8080
     depends_on:
       db:

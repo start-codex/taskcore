@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+
 import { browser } from '$app/environment';
 import { overwriteGetLocale, locales, baseLocale } from '$lib/paraglide/runtime';
 import type { Locale } from '$lib/paraglide/runtime';

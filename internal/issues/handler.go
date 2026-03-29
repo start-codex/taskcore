@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Start Codex SAS. All rights reserved.
+// SPDX-License-Identifier: BUSL-1.1
+// Use of this software is governed by the Business Source License 1.1
+// included in the LICENSE file at the root of this repository.
+
 package issues
 
 import (
@@ -6,8 +11,8 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/taskcode/internal/authz"
-	"github.com/start-codex/taskcode/internal/respond"
+	"github.com/start-codex/trazawork/internal/authz"
+	"github.com/start-codex/trazawork/internal/respond"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
