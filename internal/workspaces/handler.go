@@ -50,22 +50,14 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			Name    string `json:"name"`
-			Slug    string `json:"slug"`
-			OwnerID string `json:"owner_id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
 		}
 		if err := respond.Decode(r, &body); err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		if body.OwnerID != "" && body.OwnerID != authedUserID {
-			respond.Error(w, http.StatusForbidden, "owner_id must match authenticated user")
-			return
-		}
-		if body.OwnerID == "" {
-			body.OwnerID = authedUserID
-		}
-		params := CreateWorkspaceParams{Name: body.Name, Slug: body.Slug, OwnerID: body.OwnerID}
+		params := CreateWorkspaceParams{Name: body.Name, Slug: body.Slug, OwnerID: authedUserID}
 		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
@@ -209,9 +201,9 @@ func handleRemoveMember(db *sqlx.DB) http.HandlerFunc {
 
 func handleListByUser(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := r.URL.Query().Get("user_id")
-		if userID == "" {
-			respond.Error(w, http.StatusBadRequest, "user_id query param is required")
+		userID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
+			fail(w, err)
 			return
 		}
 		workspaceList, err := ListByUser(r.Context(), db, userID)

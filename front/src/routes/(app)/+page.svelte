@@ -40,7 +40,7 @@
 		const user = $currentUser;
 		if (!user) { goto('/login'); return; }
 		try {
-			const list = await workspacesApi.listByUser(user.id);
+			const list = await workspacesApi.list();
 			if (list && list.length > 0) {
 				goto(`/${list[0].slug}`);
 				return;
@@ -61,7 +61,7 @@
 		wsError = '';
 		wsSaving = true;
 		try {
-			const ws = await workspacesApi.create({ name: wsName.trim(), slug: wsSlug.trim(), owner_id: $currentUser!.id });
+			const ws = await workspacesApi.create({ name: wsName.trim(), slug: wsSlug.trim() });
 			goto(`/${ws.slug}`);
 		} catch (err) {
 			wsError = err instanceof Error ? err.message : 'Failed to create workspace';

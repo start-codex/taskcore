@@ -13,7 +13,7 @@ export const load: LayoutLoad = async ({ params }) => {
 	if (!raw) redirect(302, '/login');
 
 	const user = JSON.parse(raw);
-	const list = await workspacesApi.listByUser(user.id).catch(() => []);
+	const list = await workspacesApi.list().catch(() => []);
 	const workspace = list.find((w) => w.slug === params.workspace);
 
 	if (!workspace) redirect(302, '/');

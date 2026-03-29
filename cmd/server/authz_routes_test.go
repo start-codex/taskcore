@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -197,6 +198,233 @@ func TestAuthzWiring_BoardGet(t *testing.T) {
 	env = doRequest(t, srv, "GET", "/boards/"+boardID, nonMemberToken)
 	if env.Status != 403 {
 		t.Fatalf("non-member GET /boards/{id}: status = %d, want 403", env.Status)
+	}
+}
+
+type dataEnvelope struct {
+	Status int             `json:"status"`
+	Data   json.RawMessage `json:"data,omitempty"`
+	Error  string          `json:"error,omitempty"`
+}
+
+func doRequestWithBody(t *testing.T, srv *httptest.Server, method, path, token string, body any) dataEnvelope {
+	t.Helper()
+	var buf bytes.Buffer
+	if body != nil {
+		if err := json.NewEncoder(&buf).Encode(body); err != nil {
+			t.Fatalf("encode body: %v", err)
+		}
+	}
+	req, err := http.NewRequest(method, srv.URL+path, &buf)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if token != "" {
+		req.AddCookie(&http.Cookie{Name: "session_id", Value: token})
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	defer resp.Body.Close()
+	var env dataEnvelope
+	_ = json.NewDecoder(resp.Body).Decode(&env)
+	env.Status = resp.StatusCode
+	return env
+}
+
+// TestContractCleanup_WorkspaceCreate verifies POST /workspaces derives owner
+// from session and ignores any spoofed owner_id in the body.
+func TestContractCleanup_WorkspaceCreate(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	userID := testpg.SeedUser(t, db)
+	token := loginCookie(t, db, userID)
+	suffix := testpg.UniqueSuffix(t, db)
+
+	// Create workspace without owner_id
+	env := doRequestWithBody(t, srv, "POST", "/workspaces", token, map[string]string{
+		"name": "WS " + suffix,
+		"slug": "ws-" + suffix,
+	})
+	if env.Status != 201 {
+		t.Fatalf("POST /workspaces without owner_id: status = %d, want 201 (error: %s)", env.Status, env.Error)
+	}
+
+	// Verify the authenticated user became the owner
+	var ws struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(env.Data, &ws); err != nil {
+		t.Fatalf("unmarshal workspace: %v", err)
+	}
+	var role string
+	err := db.QueryRowContext(context.Background(),
+		`SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+		ws.ID, userID,
+	).Scan(&role)
+	if err != nil {
+		t.Fatalf("query owner membership: %v", err)
+	}
+	if role != "owner" {
+		t.Fatalf("owner role = %q, want %q", role, "owner")
+	}
+
+	// Spoofed owner_id should be ignored — user still becomes owner
+	otherUser := testpg.SeedUser(t, db)
+	suffix2 := testpg.UniqueSuffix(t, db)
+	env = doRequestWithBody(t, srv, "POST", "/workspaces", token, map[string]string{
+		"name":     "WS " + suffix2,
+		"slug":     "ws-" + suffix2,
+		"owner_id": otherUser,
+	})
+	if env.Status != 201 {
+		t.Fatalf("POST /workspaces with spoofed owner_id: status = %d, want 201 (error: %s)", env.Status, env.Error)
+	}
+	var ws2 struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(env.Data, &ws2); err != nil {
+		t.Fatalf("unmarshal workspace: %v", err)
+	}
+	err = db.QueryRowContext(context.Background(),
+		`SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+		ws2.ID, userID,
+	).Scan(&role)
+	if err != nil {
+		t.Fatalf("query owner membership after spoof: %v", err)
+	}
+	if role != "owner" {
+		t.Fatalf("spoofed owner_id: authenticated user role = %q, want %q", role, "owner")
+	}
+}
+
+// TestContractCleanup_WorkspaceList verifies GET /workspaces derives user
+// from session, returns only the authenticated user's workspaces, and ignores
+// any spoofed user_id query parameter.
+func TestContractCleanup_WorkspaceList(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	member := testpg.SeedUser(t, db)
+	other := testpg.SeedUser(t, db)
+
+	// Create two workspaces: one with member, one with other only
+	memberWS := testpg.SeedWorkspace(t, db)
+	otherWS := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, memberWS, member, "member")
+	seedMember(t, db, otherWS, other, "member")
+
+	token := loginCookie(t, db, member)
+
+	assertOnlyMemberWorkspace := func(t *testing.T, path string) {
+		t.Helper()
+
+		env := doRequestWithBody(t, srv, "GET", path, token, nil)
+		if env.Status != 200 {
+			t.Fatalf("GET %s: status = %d, want 200 (error: %s)", path, env.Status, env.Error)
+		}
+
+		var wsList []struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(env.Data, &wsList); err != nil {
+			t.Fatalf("unmarshal workspace list for %s: %v", path, err)
+		}
+		if len(wsList) != 1 {
+			t.Fatalf("GET %s returned %d workspaces, want 1", path, len(wsList))
+		}
+		if wsList[0].ID != memberWS {
+			t.Fatalf("GET %s returned workspace %s, want %s", path, wsList[0].ID, memberWS)
+		}
+		if wsList[0].ID == otherWS {
+			t.Fatalf("GET %s returned other user's workspace %s", path, otherWS)
+		}
+	}
+
+	// GET /workspaces → should return only member's workspace
+	assertOnlyMemberWorkspace(t, "/workspaces")
+
+	// GET /workspaces?user_id=other → query param ignored, still returns member's workspace only
+	assertOnlyMemberWorkspace(t, "/workspaces?user_id="+other)
+}
+
+// TestContractCleanup_IssueCreate verifies POST /projects/{id}/issues derives
+// reporter from session and ignores any spoofed reporter_id.
+func TestContractCleanup_IssueCreate(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	member := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, member, "member")
+	projID := testpg.SeedProject(t, db, wsID, "ISRC")
+	token := loginCookie(t, db, member)
+
+	// Seed a status and issue type for the project
+	var statusID, issueTypeID string
+	err := db.QueryRowContext(context.Background(),
+		`INSERT INTO statuses (project_id, name, category, position) VALUES ($1, 'Todo', 'todo', 0) RETURNING id`,
+		projID,
+	).Scan(&statusID)
+	if err != nil {
+		t.Fatalf("seed status: %v", err)
+	}
+	err = db.QueryRowContext(context.Background(),
+		`INSERT INTO issue_types (project_id, name, icon, level) VALUES ($1, 'Task', 'task', 0) RETURNING id`,
+		projID,
+	).Scan(&issueTypeID)
+	if err != nil {
+		t.Fatalf("seed issue type: %v", err)
+	}
+
+	// Create issue without reporter_id
+	env := doRequestWithBody(t, srv, "POST", "/projects/"+projID+"/issues", token, map[string]string{
+		"issue_type_id": issueTypeID,
+		"status_id":     statusID,
+		"title":         "Test issue",
+	})
+	if env.Status != 201 {
+		t.Fatalf("POST /issues without reporter_id: status = %d, want 201 (error: %s)", env.Status, env.Error)
+	}
+
+	var issue struct {
+		ID         string `json:"id"`
+		ReporterID string `json:"reporter_id"`
+	}
+	if err := json.Unmarshal(env.Data, &issue); err != nil {
+		t.Fatalf("unmarshal issue: %v", err)
+	}
+	if issue.ReporterID != member {
+		t.Fatalf("reporter_id = %q, want %q (authenticated user)", issue.ReporterID, member)
+	}
+
+	// Spoofed reporter_id should be ignored
+	otherUser := testpg.SeedUser(t, db)
+	env = doRequestWithBody(t, srv, "POST", "/projects/"+projID+"/issues", token, map[string]string{
+		"issue_type_id": issueTypeID,
+		"status_id":     statusID,
+		"title":         "Spoofed issue",
+		"reporter_id":   otherUser,
+	})
+	if env.Status != 201 {
+		t.Fatalf("POST /issues with spoofed reporter_id: status = %d, want 201 (error: %s)", env.Status, env.Error)
+	}
+	var issue2 struct {
+		ReporterID string `json:"reporter_id"`
+	}
+	if err := json.Unmarshal(env.Data, &issue2); err != nil {
+		t.Fatalf("unmarshal issue: %v", err)
+	}
+	if issue2.ReporterID != member {
+		t.Fatalf("spoofed reporter_id: got %q, want %q (authenticated user)", issue2.ReporterID, member)
 	}
 }
 

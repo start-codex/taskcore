@@ -46,10 +46,10 @@ export const users = {
 
 // --- Workspaces ---
 export const workspaces = {
-	create: (body: { name: string; slug: string; owner_id: string }) => post<Workspace>('/workspaces', body),
+	create: (body: { name: string; slug: string }) => post<Workspace>('/workspaces', body),
 	get: (workspaceID: string) => get<Workspace>(`/workspaces/${workspaceID}`),
 	archive: (workspaceID: string) => del(`/workspaces/${workspaceID}`),
-	listByUser: (userID: string) => get<Workspace[]>(`/workspaces?user_id=${userID}`),
+	list: () => get<Workspace[]>('/workspaces'),
 	members: {
 		list: (workspaceID: string) => get<WorkspaceMember[]>(`/workspaces/${workspaceID}/members`),
 		add: (workspaceID: string, body: { user_id: string; role: string }) =>
@@ -184,7 +184,7 @@ export interface Issue {
 }
 export interface CreateIssueBody {
 	issue_type_id: string; status_id: string; title: string;
-	reporter_id: string; description?: string; priority?: string;
+	description?: string; priority?: string;
 	assignee_id?: string; parent_issue_id?: string; due_date?: string;
 }
 export interface UpdateIssueBody {

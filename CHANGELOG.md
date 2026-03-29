@@ -39,7 +39,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Changed `GET /users/{userID}` to enforce self-only access (403 on mismatch)
 - Changed login to reject archived users before session creation
 - Changed `internal/authctx` consolidated into `internal/authz`
-- Changed `POST /workspaces` to reject `owner_id` that doesn't match authenticated user
+- Changed `POST /workspaces` to derive owner from authenticated session (removed `owner_id` from request body)
+- Changed `GET /workspaces` to derive user from authenticated session (removed `user_id` query parameter)
+- Changed `POST /projects/{projectID}/issues` to derive reporter from authenticated session (removed `reporter_id` from request body)
 - Changed authz resource resolution to allow archived projects, boards, and columns (domain handlers decide visibility)
 - Changed project name from Taskcore to Traza Work (domain: trazawork.com)
 - Changed license from AGPL-3.0 to BSL 1.1

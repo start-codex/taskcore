@@ -76,7 +76,7 @@
 		error = '';
 		saving = true;
 		try {
-			const workspace = await workspacesApi.create({ name: name.trim(), slug: slug.trim(), owner_id: $currentUser!.id });
+			const workspace = await workspacesApi.create({ name: name.trim(), slug: slug.trim() });
 			sheetOpen = false;
 			resetForm();
 			onCreate?.(workspace);

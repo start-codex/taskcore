@@ -49,6 +49,11 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
+		authedUserID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
+			fail(w, err)
+			return
+		}
 		var body struct {
 			IssueTypeID   string `json:"issue_type_id"`
 			StatusID      string `json:"status_id"`
@@ -57,7 +62,6 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			Description   string `json:"description"`
 			Priority      string `json:"priority"`
 			AssigneeID    string `json:"assignee_id"`
-			ReporterID    string `json:"reporter_id"`
 		}
 		if err := respond.Decode(r, &body); err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
@@ -72,7 +76,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			Description:   body.Description,
 			Priority:      body.Priority,
 			AssigneeID:    body.AssigneeID,
-			ReporterID:    body.ReporterID,
+			ReporterID:    authedUserID,
 		}
 		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
