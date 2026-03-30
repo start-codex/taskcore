@@ -154,3 +154,36 @@ Add intelligence and visibility on top of the workflow.
 **Assisted transformations (deferred)**
 - Assisted derivation of backlog items or sprint scope from documentation content.
 - Only introduced here, after the manual-first foundation of Phase 3 is established.
+
+---
+
+## Phase 6 — AI assistant and MCP `[planned]`
+
+Workflow-oriented assistant that helps teams query, draft, structure and execute within Tookly. See [docs/06-ai-assistant.md](06-ai-assistant.md) for full details.
+
+**Provider configuration**
+- Provider-agnostic: configurable via API per workspace or instance.
+- Supported providers: OpenAI/GPT, Anthropic/Claude, Google/Gemini, Ollama, or any compatible API.
+- Configuration: endpoint URL, API key, model name.
+- Without a configured provider, AI features are unavailable but Tookly works normally.
+
+**Assistant / Copilot**
+- Chat interface for querying workspace data (issues, boards, projects, members).
+- Assisted drafting and structuring of documentation pages.
+- Execution of Tookly operations under the authenticated user's session and permissions.
+- No AI superuser — if the user lacks permissions, the operation fails as in UI.
+
+**Proposals**
+- Unified `Proposal` model for changes suggested by AI or by a human.
+- Same shape: origin (human/ai), author, target entity, payload.
+- Same execution flow and permission model regardless of origin.
+
+**MCP integration**
+- Connectors to read and act on external systems (Git, CI, messaging, etc.).
+- Scoped by the authenticated user's session and permissions.
+- Extensible connector model for self-hosted environments.
+
+**Documentation**
+- Project pages persisted as editable Markdown.
+- Predefined templates/forms to structure initial content.
+- Free editing after creation — no semantic graph or canonical types.

@@ -54,6 +54,7 @@ Summary:
 - **Phase 3 — Documentation-led planning** `[planned]` — project pages, decision records, doc↔work item links.
 - **Phase 4 — Cross-industry templates** `[planned]` — workflow presets for HR, legal, marketing, sales, and more.
 - **Phase 5 — Automation + reporting** `[planned]` — automations, metrics, burndown, velocity tracking.
+- **Phase 6 — AI assistant and MCP** `[planned]` — provider-agnostic copilot, proposals, MCP connectors, assisted documentation.
 
 ## Getting started
 
@@ -103,6 +104,7 @@ All responses follow the envelope format:
 - Data model: [docs/03-data-model.md](docs/03-data-model.md)
 - Go conventions: [docs/04-go-conventions.md](docs/04-go-conventions.md)
 - Roadmap: [docs/05-roadmap.md](docs/05-roadmap.md)
+- AI assistant: [docs/06-ai-assistant.md](docs/06-ai-assistant.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ## Contributing
