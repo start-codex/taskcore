@@ -225,6 +225,9 @@ These entities and capabilities are planned for future phases. Field-level desig
 
 **Phase 2 — Software workflow depth**
 - **Sprint / SprintIssue** — sprint planning and execution; links issues to time-boxed iterations.
+- **Issue.start_date** — actual work-start date for teams that track when implementation begins.
+- **Issue.story_points** — relative-effort field for sprint planning and velocity.
+- **Estimation model** — configurable team-level approach for time-, effort-, or point-based estimation; deferred until its semantics are defined.
 - **Comment** — threaded comments on issues.
 - **Attachment** — files attached to issues.
 - **CustomField** — per-project extensible fields on issues.

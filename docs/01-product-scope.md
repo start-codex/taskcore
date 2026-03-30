@@ -132,6 +132,7 @@ This relationship is **manual first**: documentation and execution artifacts are
 - Sprint model: create, populate, start, and close sprints; backlog view.
 - Cross-industry workflow templates.
 - Custom fields per project.
+- Planning metadata per work item, such as start date and estimation fields.
 - Rule-based automations (e.g. notify on status change).
 - Transactional email flows for invitations, password reset, and system notifications.
 - Identity federation and instance-level administration for self-hosted deployments.

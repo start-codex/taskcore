@@ -28,6 +28,7 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Added workspace membership enforcement on all API routes (read and write)
 - Added project-member creation guard: target user must be a workspace member
 - Added `sessions.IsAuthError` helper for centralized error classification
+- Added `due_date` field to issue create and update API contracts (`YYYY-MM-DD` or `null`)
 - Added `RequireWorkspaceAdmin` to `internal/authz` for admin/owner role enforcement
 - Added `ApiError` class to frontend API client for typed HTTP error handling
 - Added `auth.me()` and `auth.logout()` to frontend API client

@@ -641,6 +641,92 @@ func TestAdminWiring_MemberReadNoRegression(t *testing.T) {
 	}
 }
 
+// TestDueDate_CreateAndUpdate verifies due_date can be set on create,
+// changed on update, and cleared by sending null.
+func TestDueDate_CreateAndUpdate(t *testing.T) {
+	db := testpg.Open(t)
+	testpg.EnsureMigrated(t, db)
+	srv := setupTestServer(t, db)
+
+	user := testpg.SeedUser(t, db)
+	wsID := testpg.SeedWorkspace(t, db)
+	seedMember(t, db, wsID, user, "member")
+	projID := testpg.SeedProject(t, db, wsID, "DUED")
+	token := loginCookie(t, db, user)
+
+	statusID := seedStatus(t, db, projID)
+	issueTypeID := seedIssueType(t, db, projID)
+
+	// Create issue with due_date
+	env := doRequestWithBody(t, srv, "POST", "/projects/"+projID+"/issues", token, map[string]any{
+		"issue_type_id": issueTypeID,
+		"status_id":     statusID,
+		"title":         "Issue with date",
+		"due_date":      "2026-04-15",
+	})
+	if env.Status != 201 {
+		t.Fatalf("create with due_date: status = %d, want 201 (error: %s)", env.Status, env.Error)
+	}
+	var created struct {
+		ID      string  `json:"id"`
+		DueDate *string `json:"due_date"`
+	}
+	if err := json.Unmarshal(env.Data, &created); err != nil {
+		t.Fatalf("unmarshal created issue: %v", err)
+	}
+	if created.DueDate == nil || (*created.DueDate)[:10] != "2026-04-15" {
+		t.Fatalf("created due_date = %v, want 2026-04-15", created.DueDate)
+	}
+
+	// Update due_date to a different value
+	env = doRequestWithBody(t, srv, "PUT", "/projects/"+projID+"/issues/"+created.ID, token, map[string]any{
+		"title":    "Issue with date",
+		"priority": "medium",
+		"due_date": "2026-05-01",
+	})
+	if env.Status != 200 {
+		t.Fatalf("update due_date: status = %d, want 200 (error: %s)", env.Status, env.Error)
+	}
+	var updated struct {
+		DueDate *string `json:"due_date"`
+	}
+	if err := json.Unmarshal(env.Data, &updated); err != nil {
+		t.Fatalf("unmarshal updated issue: %v", err)
+	}
+	if updated.DueDate == nil || (*updated.DueDate)[:10] != "2026-05-01" {
+		t.Fatalf("updated due_date = %v, want 2026-05-01", updated.DueDate)
+	}
+
+	// Clear due_date by sending null
+	env = doRequestWithBody(t, srv, "PUT", "/projects/"+projID+"/issues/"+created.ID, token, map[string]any{
+		"title":    "Issue with date",
+		"priority": "medium",
+		"due_date": nil,
+	})
+	if env.Status != 200 {
+		t.Fatalf("clear due_date: status = %d, want 200 (error: %s)", env.Status, env.Error)
+	}
+	var cleared struct {
+		DueDate *string `json:"due_date"`
+	}
+	if err := json.Unmarshal(env.Data, &cleared); err != nil {
+		t.Fatalf("unmarshal cleared issue: %v", err)
+	}
+	if cleared.DueDate != nil {
+		t.Fatalf("cleared due_date = %v, want nil", *cleared.DueDate)
+	}
+
+	// Create issue without due_date (should work, it's optional)
+	env = doRequestWithBody(t, srv, "POST", "/projects/"+projID+"/issues", token, map[string]any{
+		"issue_type_id": issueTypeID,
+		"status_id":     statusID,
+		"title":         "Issue no date",
+	})
+	if env.Status != 201 {
+		t.Fatalf("create without due_date: status = %d, want 201 (error: %s)", env.Status, env.Error)
+	}
+}
+
 func seedColumn(t *testing.T, db *sqlx.DB, boardID string) string {
 	t.Helper()
 	var id string

@@ -9,11 +9,23 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/tookly/internal/authz"
 	"github.com/start-codex/tookly/internal/respond"
 )
+
+func parseDueDate(s *string) (*time.Time, error) {
+	if s == nil || *s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", *s)
+	if err != nil {
+		return nil, errors.New("due_date must be YYYY-MM-DD format")
+	}
+	return &t, nil
+}
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 	mux.HandleFunc("POST /projects/{projectID}/issues", handleCreate(db))
@@ -55,16 +67,22 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			IssueTypeID   string `json:"issue_type_id"`
-			StatusID      string `json:"status_id"`
-			ParentIssueID string `json:"parent_issue_id"`
-			Title         string `json:"title"`
-			Description   string `json:"description"`
-			Priority      string `json:"priority"`
-			AssigneeID    string `json:"assignee_id"`
+			IssueTypeID   string  `json:"issue_type_id"`
+			StatusID      string  `json:"status_id"`
+			ParentIssueID string  `json:"parent_issue_id"`
+			Title         string  `json:"title"`
+			Description   string  `json:"description"`
+			Priority      string  `json:"priority"`
+			AssigneeID    string  `json:"assignee_id"`
+			DueDate       *string `json:"due_date"`
 		}
 		if err := respond.Decode(r, &body); err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		dueDate, err := parseDueDate(body.DueDate)
+		if err != nil {
+			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 		params := CreateIssueParams{
@@ -77,6 +95,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			Priority:      body.Priority,
 			AssigneeID:    body.AssigneeID,
 			ReporterID:    authedUserID,
+			DueDate:       dueDate,
 		}
 		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
@@ -137,9 +156,15 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			Description string  `json:"description"`
 			Priority    string  `json:"priority"`
 			AssigneeID  *string `json:"assignee_id"`
+			DueDate     *string `json:"due_date"`
 		}
 		if err := respond.Decode(r, &body); err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		dueDate, err := parseDueDate(body.DueDate)
+		if err != nil {
+			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 		params := UpdateIssueParams{
@@ -149,6 +174,7 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			Description: body.Description,
 			Priority:    body.Priority,
 			AssigneeID:  body.AssigneeID,
+			DueDate:     dueDate,
 		}
 		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
