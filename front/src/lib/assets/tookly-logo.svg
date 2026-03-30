@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" fill="none">
+  <path
+    fill="#FACC15"
+    d="M25 78C25 44 54 20 98 20C131 20 142 43 142 74C142 116 116 142 81 142C47 142 25 115 25 78Z"
+  />
+  <path
+    d="M107 47C98 59 91 68 83 78C76 86 68 93 58 89C48 85 45 72 53 64C61 56 73 60 83 78C92 94 100 105 108 116"
+    stroke="#0B1F5E"
+    stroke-width="12"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

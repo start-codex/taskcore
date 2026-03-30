@@ -1,4 +1,15 @@
+<p align="center">
+  <img src="front/src/lib/assets/tookly-logo.svg" alt="Tookly logo" width="180" />
+</p>
+
 # Tookly
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26" />
+  <img src="https://img.shields.io/badge/SvelteKit-2-FF3E00?logo=svelte&logoColor=white" alt="SvelteKit 2" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16" />
+  <img src="https://img.shields.io/badge/License-BSL%201.1-0F172A" alt="License BSL 1.1" />
+</p>
 
 Tookly is a source-available workflow platform for teams. Capture ideas, plan work, track execution, and follow through — regardless of your industry or methodology.
 
