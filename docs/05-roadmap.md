@@ -63,7 +63,7 @@ Close the gap between what the backend supports and what the UI delivers. Delive
 
 Make self-hosted deployments operable beyond basic local login. This phase covers the missing identity and bootstrap capabilities that sit between MVP auth and broader platform workflows.
 
-**Instance configuration, bootstrap, email, admin settings, and change password** (PRs #25–#30 `[shipped]`)
+**Instance configuration, bootstrap, email, admin settings, change password, and password reset** (PRs #25–#31 `[shipped]`)
 - `instance_config` key-value table for instance-level settings.
 - `internal/instance` package: `GetConfig`, `SetConfig`, `IsInitialized`, `Bootstrap`.
 - `POST /instance/bootstrap`: atomic first-install flow creates global admin.

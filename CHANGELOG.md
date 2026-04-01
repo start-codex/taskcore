@@ -11,6 +11,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added forgot/reset password flow: `POST /auth/forgot-password` and `POST /auth/reset-password`
+- Added `internal/passwordreset` package with token-based reset (SHA-256, 1h TTL, one-time use)
+- Added `users.SetPassword` for password reset without current password verification
 - Added change password flow: `POST /auth/change-password` with session invalidation
 - Added `ChangePasswordForm` shared component for account settings
 - Added minimum password length enforcement (8 characters)

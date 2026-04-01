@@ -64,6 +64,8 @@ var staticPublicRoutes = []struct{ method, path string }{
 	{"POST", "/auth/logout"},
 	{"GET", "/instance/status"},
 	{"POST", "/instance/bootstrap"},
+	{"POST", "/auth/forgot-password"},
+	{"POST", "/auth/reset-password"},
 }
 
 // isPublicRoute returns:

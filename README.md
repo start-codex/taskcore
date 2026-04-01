@@ -45,6 +45,7 @@ What is shipped today:
 - Issue detail page: view and edit title, description, priority, assignee, due date.
 - Basic board filters: client-side filtering by assignee, priority, and issue type.
 - Instance bootstrap: first-install setup wizard creates the initial global admin.
+- Forgot/reset password with email token (1h TTL, one-time use, session invalidation).
 - Change password with session invalidation on other devices.
 - Instance admin settings page for SMTP configuration.
 - SMTP email delivery with Mailpit for local development.

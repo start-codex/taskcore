@@ -126,6 +126,44 @@ func ChangePassword(ctx context.Context, db *sqlx.DB, userID, currentPassword, n
 	return updatePassword(ctx, db, userID, newHash)
 }
 
+// SetPassword sets a new password for the user without verifying the current one.
+// Used for password reset flows. Validates minimum length.
+func SetPassword(ctx context.Context, db *sqlx.DB, userID, newPassword string) error {
+	if db == nil {
+		return errors.New("db is required")
+	}
+	if userID == "" {
+		return errors.New("userID is required")
+	}
+	if len(newPassword) < MinPasswordLength {
+		return ErrPasswordTooShort
+	}
+	newHash, err := hashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	return updatePassword(ctx, db, userID, newHash)
+}
+
+// SetPasswordTx sets a new password within an existing transaction.
+// Used for atomic password reset flows.
+func SetPasswordTx(ctx context.Context, tx *sqlx.Tx, userID, newPassword string) error {
+	if tx == nil {
+		return errors.New("tx is required")
+	}
+	if userID == "" {
+		return errors.New("userID is required")
+	}
+	if len(newPassword) < MinPasswordLength {
+		return ErrPasswordTooShort
+	}
+	newHash, err := hashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	return updatePasswordTx(ctx, tx, userID, newHash)
+}
+
 func ArchiveUser(ctx context.Context, db *sqlx.DB, id string) error {
 	if db == nil {
 		return errors.New("db is required")

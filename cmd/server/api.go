@@ -12,6 +12,7 @@ import (
 	"github.com/start-codex/tookly/internal/boards"
 	"github.com/start-codex/tookly/internal/instance"
 	"github.com/start-codex/tookly/internal/issues"
+	"github.com/start-codex/tookly/internal/passwordreset"
 	"github.com/start-codex/tookly/internal/issuetypes"
 	"github.com/start-codex/tookly/internal/projects"
 	"github.com/start-codex/tookly/internal/statuses"
@@ -24,6 +25,7 @@ func newAPIHandler(db *sqlx.DB) http.Handler {
 	api := http.NewServeMux()
 	instance.RegisterRoutes(api, db)
 	users.RegisterRoutes(api, db)
+	passwordreset.RegisterRoutes(api, db)
 	workspaces.RegisterRoutes(api, db)
 	projects.RegisterRoutes(api, db)
 	statuses.RegisterRoutes(api, db)

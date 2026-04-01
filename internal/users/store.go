@@ -145,6 +145,24 @@ func updatePassword(ctx context.Context, db *sqlx.DB, userID, newHash string) er
 	return nil
 }
 
+func updatePasswordTx(ctx context.Context, tx *sqlx.Tx, userID, newHash string) error {
+	res, err := tx.ExecContext(ctx,
+		`UPDATE app_users SET password_hash = $2, updated_at = NOW() WHERE id = $1 AND archived_at IS NULL`,
+		userID, newHash,
+	)
+	if err != nil {
+		return fmt.Errorf("update password tx: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update password tx rows: %w", err)
+	}
+	if n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func archiveUser(ctx context.Context, db *sqlx.DB, id string) error {
 	res, err := db.ExecContext(ctx,
 		`UPDATE app_users
