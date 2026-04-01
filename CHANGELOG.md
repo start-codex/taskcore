@@ -11,6 +11,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added transactional email foundation with `internal/email` package and embedded HTML templates
+- Added Mailpit to docker-compose for local SMTP testing
+- Added SMTP configuration API: `GET/POST /instance/smtp` and `POST /instance/smtp/test` (instance admin only)
 - Added setup wizard at `/setup` for first-install instance configuration
 - Added instance status check guards on login and app layouts
 - Added instance bootstrap flow: `POST /instance/bootstrap` creates first admin user atomically with `SELECT FOR UPDATE`

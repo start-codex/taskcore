@@ -10,8 +10,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/email"
 	"github.com/start-codex/tookly/internal/sessions"
 	"github.com/start-codex/tookly/internal/users"
 )
@@ -127,4 +129,51 @@ func IsInitialized(ctx context.Context, db *sqlx.DB) (bool, error) {
 		return false, fmt.Errorf("invalid initialized value: %q", val)
 	}
 	return val == "true", nil
+}
+
+func LoadSMTPConfig(ctx context.Context, db *sqlx.DB) (*email.SMTPConfig, error) {
+	host, err := GetConfig(ctx, db, "smtp_host")
+	if err != nil {
+		if errors.Is(err, ErrConfigNotFound) {
+			return nil, email.ErrSMTPNotConfigured
+		}
+		return nil, err
+	}
+	if host == "" {
+		return nil, email.ErrSMTPNotConfigured
+	}
+
+	portStr, _ := GetConfig(ctx, db, "smtp_port")
+	port, _ := strconv.Atoi(portStr)
+	if port == 0 {
+		port = 587
+	}
+
+	from, _ := GetConfig(ctx, db, "smtp_from")
+	username, _ := GetConfig(ctx, db, "smtp_username")
+	password, _ := GetConfig(ctx, db, "smtp_password")
+
+	return &email.SMTPConfig{
+		Host:     host,
+		Port:     port,
+		From:     from,
+		Username: username,
+		Password: password,
+	}, nil
+}
+
+func SaveSMTPConfig(ctx context.Context, db *sqlx.DB, config email.SMTPConfig) error {
+	keys := map[string]string{
+		"smtp_host":     config.Host,
+		"smtp_port":     strconv.Itoa(config.Port),
+		"smtp_from":     config.From,
+		"smtp_username": config.Username,
+		"smtp_password": config.Password,
+	}
+	for k, v := range keys {
+		if err := SetConfig(ctx, db, k, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }

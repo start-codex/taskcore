@@ -11,6 +11,8 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/authz"
+	"github.com/start-codex/tookly/internal/email"
 	"github.com/start-codex/tookly/internal/respond"
 	"github.com/start-codex/tookly/internal/users"
 )
@@ -18,6 +20,9 @@ import (
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 	mux.HandleFunc("GET /instance/status", handleStatus(db))
 	mux.HandleFunc("POST /instance/bootstrap", handleBootstrap(db))
+	mux.HandleFunc("GET /instance/smtp", handleGetSMTP(db))
+	mux.HandleFunc("POST /instance/smtp", handleSetSMTP(db))
+	mux.HandleFunc("POST /instance/smtp/test", handleTestSMTP(db))
 }
 
 func fail(w http.ResponseWriter, err error) {
@@ -82,5 +87,100 @@ func handleBootstrap(db *sqlx.DB) http.HandlerFunc {
 		})
 
 		respond.JSON(w, http.StatusCreated, result.User)
+	}
+}
+
+func handleGetSMTP(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.RequireInstanceAdmin(r.Context(), db); err != nil {
+			respond.Error(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		config, err := LoadSMTPConfig(r.Context(), db)
+		if err != nil {
+			if errors.Is(err, email.ErrSMTPNotConfigured) {
+				respond.JSON(w, http.StatusOK, email.SMTPConfig{})
+				return
+			}
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		// Mask password
+		if config.Password != "" {
+			config.Password = "********"
+		}
+		respond.JSON(w, http.StatusOK, config)
+	}
+}
+
+const maskedPassword = "********"
+
+func handleSetSMTP(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.RequireInstanceAdmin(r.Context(), db); err != nil {
+			respond.Error(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		var config email.SMTPConfig
+		if err := respond.Decode(r, &config); err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		if err := config.Validate(); err != nil {
+			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		// If password is the masked sentinel, keep the existing stored password
+		if config.Password == maskedPassword {
+			existing, err := LoadSMTPConfig(r.Context(), db)
+			if err == nil && existing != nil {
+				config.Password = existing.Password
+			} else {
+				config.Password = ""
+			}
+		}
+		if err := SaveSMTPConfig(r.Context(), db, config); err != nil {
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "saved"})
+	}
+}
+
+func handleTestSMTP(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.RequireInstanceAdmin(r.Context(), db); err != nil {
+			respond.Error(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		userID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
+			respond.Error(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		user, err := users.GetUser(r.Context(), db, userID)
+		if err != nil {
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		config, err := LoadSMTPConfig(r.Context(), db)
+		if err != nil {
+			if errors.Is(err, email.ErrSMTPNotConfigured) {
+				respond.Error(w, http.StatusUnprocessableEntity, "SMTP not configured")
+				return
+			}
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		msg := email.Message{
+			To:      user.Email,
+			Subject: "Tookly SMTP Test",
+			Body:    "<h2>SMTP works!</h2><p>This is a test email from your Tookly instance.</p>",
+		}
+		if err := email.Send(config, msg); err != nil {
+			respond.Error(w, http.StatusBadGateway, "failed to send test email: "+err.Error())
+			return
+		}
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "sent", "to": user.Email})
 	}
 }

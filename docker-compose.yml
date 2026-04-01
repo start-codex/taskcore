@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:18-alpine
     container_name: tookly-db
+    restart: no
     environment:
       POSTGRES_USER: ${DB_USER:-tookly}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-tookly}
@@ -15,6 +16,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: tookly-mailpit
+    restart: no
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
 
   app:
     build: .
