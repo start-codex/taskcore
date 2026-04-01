@@ -11,6 +11,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added workspace invitations: create, list, revoke, resend, accept (authenticated or new user registration)
+- Added `internal/invitations` package with token-based invitation flow (SHA-256, 7-day TTL)
+- Added `GET/POST /invitations/accept` public endpoints for invitation acceptance
 - Added forgot password page at `/forgot-password` and reset password page at `/reset-password`
 - Added "Forgot password?" link to login form
 - Added success banner on login after password reset
