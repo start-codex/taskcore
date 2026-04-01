@@ -200,3 +200,126 @@ func TestCreateUser_AfterBootstrap(t *testing.T) {
 		t.Fatalf("POST /users after bootstrap = %d, want 201", resp2.StatusCode)
 	}
 }
+
+// bootstrapAndLogin bootstraps the instance and returns the admin session cookie.
+func bootstrapAndLogin(t *testing.T, srv *httptest.Server, db *sqlx.DB) []*http.Cookie {
+	t.Helper()
+	suffix := testpg.UniqueSuffix(t, db)
+	resp, _ := doInstancePost(t, srv, "/instance/bootstrap", map[string]string{
+		"email":    suffix + "@test.local",
+		"name":     "Admin " + suffix,
+		"password": "securepass123",
+	})
+	if resp.StatusCode != 201 {
+		t.Fatalf("bootstrap = %d, want 201", resp.StatusCode)
+	}
+	return resp.Cookies()
+}
+
+func doWithCookies(t *testing.T, srv *httptest.Server, method, path string, cookies []*http.Cookie, body any) (*http.Response, map[string]any) {
+	t.Helper()
+	var buf bytes.Buffer
+	if body != nil {
+		json.NewEncoder(&buf).Encode(body)
+	}
+	req, _ := http.NewRequest(method, srv.URL+path, &buf)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	defer resp.Body.Close()
+	var result map[string]any
+	json.NewDecoder(resp.Body).Decode(&result)
+	return resp, result
+}
+
+func TestSMTP_GetBeforeConfig(t *testing.T) {
+	srv, db := setupFreshInstanceServer(t)
+	cookies := bootstrapAndLogin(t, srv, db)
+
+	resp, _ := doWithCookies(t, srv, "GET", "/instance/smtp", cookies, nil)
+	if resp.StatusCode != 200 {
+		t.Fatalf("GET /instance/smtp = %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestSMTP_SaveAndGet(t *testing.T) {
+	srv, db := setupFreshInstanceServer(t)
+	cookies := bootstrapAndLogin(t, srv, db)
+
+	// Save
+	resp, _ := doWithCookies(t, srv, "POST", "/instance/smtp", cookies, map[string]any{
+		"host": "smtp.test.local", "port": 1025, "from": "noreply@test.local",
+		"username": "user", "password": "secret",
+	})
+	if resp.StatusCode != 200 {
+		t.Fatalf("POST /instance/smtp = %d, want 200", resp.StatusCode)
+	}
+
+	// Get — password should be masked
+	resp2, body2 := doWithCookies(t, srv, "GET", "/instance/smtp", cookies, nil)
+	if resp2.StatusCode != 200 {
+		t.Fatalf("GET /instance/smtp = %d, want 200", resp2.StatusCode)
+	}
+	data := body2["data"].(map[string]any)
+	if data["host"] != "smtp.test.local" {
+		t.Fatalf("host = %v, want smtp.test.local", data["host"])
+	}
+	if data["password"] != "********" {
+		t.Fatalf("password = %v, want ********", data["password"])
+	}
+}
+
+func TestSMTP_SaveWithMaskedPasswordPreserves(t *testing.T) {
+	srv, db := setupFreshInstanceServer(t)
+	cookies := bootstrapAndLogin(t, srv, db)
+
+	// Save with real password
+	doWithCookies(t, srv, "POST", "/instance/smtp", cookies, map[string]any{
+		"host": "smtp.test.local", "port": 1025, "from": "noreply@test.local",
+		"username": "user", "password": "realsecret",
+	})
+
+	// Save again with masked password — should preserve the real one
+	doWithCookies(t, srv, "POST", "/instance/smtp", cookies, map[string]any{
+		"host": "smtp.test.local", "port": 1025, "from": "noreply@test.local",
+		"username": "user", "password": "********",
+	})
+
+	// Verify the password was preserved (by checking the DB directly, not the API)
+	var stored string
+	db.GetContext(context.Background(), &stored,
+		`SELECT value FROM instance_config WHERE key = 'smtp_password'`)
+	if stored != "realsecret" {
+		t.Fatalf("stored password = %q, want %q", stored, "realsecret")
+	}
+}
+
+func TestSMTP_RequiresAdmin(t *testing.T) {
+	srv, _ := setupFreshInstanceServer(t)
+
+	// No auth — should fail
+	resp, _ := doInstanceGet(t, srv, "/instance/smtp")
+	if resp.StatusCode != 401 {
+		t.Fatalf("GET /instance/smtp without auth = %d, want 401", resp.StatusCode)
+	}
+}
+
+func TestSMTP_ValidationError(t *testing.T) {
+	srv, db := setupFreshInstanceServer(t)
+	cookies := bootstrapAndLogin(t, srv, db)
+
+	// Missing host
+	resp, _ := doWithCookies(t, srv, "POST", "/instance/smtp", cookies, map[string]any{
+		"port": 1025, "from": "noreply@test.local",
+	})
+	if resp.StatusCode != 422 {
+		t.Fatalf("POST /instance/smtp without host = %d, want 422", resp.StatusCode)
+	}
+}

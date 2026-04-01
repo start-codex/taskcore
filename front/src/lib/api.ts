@@ -42,10 +42,20 @@ const put = <T>(path: string, body: unknown) => request<T>('PUT', path, body);
 const del = (path: string) => request<void>('DELETE', path);
 
 // --- Instance ---
+export interface SMTPConfig {
+	host: string; port: number; from: string;
+	username?: string; password?: string;
+}
+
 export const instance = {
 	status: () => get<{ initialized: boolean }>('/instance/status'),
 	bootstrap: (body: { email: string; name: string; password: string }) =>
-		post<User>('/instance/bootstrap', body)
+		post<User>('/instance/bootstrap', body),
+	smtp: {
+		get: () => get<SMTPConfig>('/instance/smtp'),
+		save: (body: SMTPConfig) => post<{ status: string }>('/instance/smtp', body),
+		test: () => post<{ status: string; to: string }>('/instance/smtp/test', {})
+	}
 };
 
 // --- Auth ---
@@ -157,7 +167,7 @@ export const issues = {
 
 // --- Types ---
 export interface User {
-	id: string; email: string; name: string;
+	id: string; email: string; name: string; is_instance_admin: boolean;
 	created_at: string; updated_at: string; archived_at?: string;
 }
 export interface Workspace {

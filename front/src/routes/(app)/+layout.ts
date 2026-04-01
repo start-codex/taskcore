@@ -9,12 +9,13 @@ import { restore } from '$lib/stores/auth';
 export const ssr = false;
 
 export async function load() {
-	if (!browser) return;
+	if (!browser) return { user: null };
 
-	// Check instance initialization — let errors throw (don't mask 500 as redirect)
 	const { initialized } = await instance.status();
 	if (!initialized) redirect(302, '/setup');
 
 	const user = await restore();
 	if (!user) redirect(302, '/login');
+
+	return { user };
 }

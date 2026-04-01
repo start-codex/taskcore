@@ -11,6 +11,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added instance admin settings page at `/admin` with SMTP configuration form
+- Added `is_instance_admin` to frontend User type
+- Added "Admin" link in user dropdown for instance admins
 - Added transactional email foundation with `internal/email` package and embedded HTML templates
 - Added Mailpit to docker-compose for local SMTP testing
 - Added SMTP configuration API: `GET/POST /instance/smtp` and `POST /instance/smtp/test` (instance admin only)

@@ -11,6 +11,7 @@
 	import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 	import LogOutIcon from "@lucide/svelte/icons/log-out";
 	import SettingsIcon from "@lucide/svelte/icons/settings";
+	import ShieldIcon from "@lucide/svelte/icons/shield";
 	import { currentUser, logout as doLogout } from '$lib/stores/auth';
 	import * as m from '$lib/paraglide/messages';
 	import { i18n } from '$lib/i18n.svelte';
@@ -22,7 +23,8 @@
 		return {
 			notifications: m.nav_notifications(),
 			logout: m.nav_logout(),
-			settings: m.settings_nav()
+			settings: m.settings_nav(),
+			admin: m.nav_admin()
 		};
 	});
 
@@ -75,6 +77,12 @@
 				</DropdownMenu.Label>
 				<DropdownMenu.Separator />
 				<DropdownMenu.Group>
+					{#if $currentUser?.is_instance_admin}
+						<DropdownMenu.Item onSelect={() => goto('/admin')}>
+							<ShieldIcon />
+							{t.admin}
+						</DropdownMenu.Item>
+					{/if}
 					<DropdownMenu.Item>
 						<BellIcon />
 						{t.notifications}
