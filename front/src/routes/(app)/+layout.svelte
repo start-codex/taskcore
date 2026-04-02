@@ -3,14 +3,73 @@
 
 <script lang="ts">
 	import { page } from '$app/state';
+	import type { LayoutData } from './$types';
 	import { currentUser, logout } from '$lib/stores/auth';
+	import { auth } from '$lib/api';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
+	import * as m from '$lib/paraglide/messages';
+	import { i18n } from '$lib/i18n.svelte';
 
-	let { children } = $props();
+	let { children, data }: { children: any; data: LayoutData } = $props();
 
 	const isWorkspaceRoute = $derived(!!page.params.workspace);
+
+	const showVerifyBanner = $derived(
+		!!$currentUser &&
+		!$currentUser.email_verified_at &&
+		data.emailVerificationRequired
+	);
+
+	const t = $derived.by(() => {
+		i18n.locale;
+		return {
+			verifyBanner: m.verify_banner(),
+			resend: m.verify_resend(),
+			resent: m.verify_resent(),
+			resendError: m.verify_resend_error()
+		};
+	});
+
+	let resending = $state(false);
+	let resendSuccess = $state(false);
+	let resendError = $state('');
+
+	async function handleResend() {
+		resending = true;
+		resendSuccess = false;
+		resendError = '';
+		try {
+			await auth.resendVerification();
+			resendSuccess = true;
+			setTimeout(() => { resendSuccess = false; }, 5000);
+		} catch {
+			resendError = t.resendError;
+		} finally {
+			resending = false;
+		}
+	}
 </script>
+
+<!-- Verification banner (above everything) -->
+{#if showVerifyBanner}
+	<div class="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-sm text-yellow-800">
+		{t.verifyBanner}
+		<button
+			class="ml-2 underline underline-offset-4 hover:text-yellow-900"
+			onclick={handleResend}
+			disabled={resending}
+		>
+			{resending ? '...' : t.resend}
+		</button>
+		{#if resendSuccess}
+			<span class="ml-2 text-green-700">{t.resent}</span>
+		{/if}
+		{#if resendError}
+			<span class="ml-2 text-red-700">{resendError}</span>
+		{/if}
+	</div>
+{/if}
 
 {#if isWorkspaceRoute}
 	{@render children()}

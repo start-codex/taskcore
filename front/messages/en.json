@@ -139,6 +139,18 @@
   "accept_passwords_mismatch": "Passwords do not match",
   "accept_password_too_short": "Password must be at least 8 characters",
 
+  "verify_banner": "Please verify your email address.",
+  "verify_resend": "Resend verification email",
+  "verify_resent": "Verification email sent",
+  "verify_resend_error": "Failed to send verification email",
+  "verify_success": "Your email has been verified!",
+  "verify_invalid": "This verification link is invalid or has expired.",
+  "verify_error": "Something went wrong. Please try again.",
+  "admin_verification_title": "Email Verification",
+  "admin_verification_toggle": "Require email verification for new accounts",
+  "admin_verification_enabled": "Email verification is enabled",
+  "admin_verification_disabled": "Email verification is disabled",
+
   "nav_admin": "Admin",
   "admin_title": "Administration",
   "admin_smtp_title": "SMTP Configuration",

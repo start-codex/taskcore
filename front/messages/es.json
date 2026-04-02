@@ -139,6 +139,18 @@
   "accept_passwords_mismatch": "Las contraseñas no coinciden",
   "accept_password_too_short": "La contraseña debe tener al menos 8 caracteres",
 
+  "verify_banner": "Por favor verifica tu dirección de correo electrónico.",
+  "verify_resend": "Reenviar correo de verificación",
+  "verify_resent": "Correo de verificación enviado",
+  "verify_resend_error": "Error al enviar correo de verificación",
+  "verify_success": "Tu correo ha sido verificado.",
+  "verify_invalid": "Este enlace de verificación es inválido o ha expirado.",
+  "verify_error": "Algo salió mal. Intenta de nuevo.",
+  "admin_verification_title": "Verificación de correo",
+  "admin_verification_toggle": "Requerir verificación de correo para nuevas cuentas",
+  "admin_verification_enabled": "Verificación de correo habilitada",
+  "admin_verification_disabled": "Verificación de correo deshabilitada",
+
   "nav_admin": "Admin",
   "admin_title": "Administración",
   "admin_smtp_title": "Configuración SMTP",

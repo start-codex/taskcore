@@ -206,6 +206,13 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		// Look up invitation before accept (token becomes unusable after)
+		inv, invErr := GetInvitation(r.Context(), db, body.Token)
+		if invErr != nil {
+			fail(w, invErr)
+			return
+		}
+
 		var userID string
 
 		// Check if authenticated (existing user accepting)
@@ -214,11 +221,6 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 			userID = authedUserID
 		} else if body.Email != "" && body.Name != "" && body.Password != "" {
 			// New user registration via invitation — verify email matches
-			inv, invErr := GetInvitation(r.Context(), db, body.Token)
-			if invErr != nil {
-				fail(w, invErr)
-				return
-			}
 			if body.Email != inv.Email {
 				respond.Error(w, http.StatusBadRequest, "email must match the invitation")
 				return
@@ -233,6 +235,9 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 				return
 			}
 			userID = newUser.ID
+
+			// Send verification email if required
+			users.TrySendVerificationEmail(r, db, newUser.ID, newUser.Email)
 		} else {
 			respond.Error(w, http.StatusBadRequest, "must be authenticated or provide email, name, and password")
 			return
@@ -243,8 +248,6 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		// Get workspace slug for redirect
-		inv, _ := GetInvitation(r.Context(), db, body.Token)
 		ws, _ := workspaces.GetWorkspace(r.Context(), db, inv.WorkspaceID)
 
 		respond.JSON(w, http.StatusOK, map[string]string{

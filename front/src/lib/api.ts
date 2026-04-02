@@ -51,6 +51,10 @@ export const instance = {
 	status: () => get<{ initialized: boolean }>('/instance/status'),
 	bootstrap: (body: { email: string; name: string; password: string }) =>
 		post<User>('/instance/bootstrap', body),
+	verification: {
+		get: () => get<{ required: boolean }>('/instance/verification'),
+		save: (body: { required: boolean }) => post<{ status: string }>('/instance/verification', body)
+	},
 	smtp: {
 		get: () => get<SMTPConfig>('/instance/smtp'),
 		save: (body: SMTPConfig) => post<{ status: string }>('/instance/smtp', body),
@@ -61,13 +65,15 @@ export const instance = {
 // --- Auth ---
 export const auth = {
 	login: (body: { email: string; password: string }) => post<User>('/auth/login', body),
-	me: () => get<{ authenticated: boolean; user?: User }>('/auth/me'),
+	me: () => get<{ authenticated: boolean; user?: User; email_verification_required?: boolean }>('/auth/me'),
 	logout: () => post<void>('/auth/logout', {}),
 	changePassword: (body: { current_password: string; new_password: string }) =>
 		post<void>('/auth/change-password', body),
 	forgotPassword: (body: { email: string }) => post<void>('/auth/forgot-password', body),
 	resetPassword: (body: { token: string; new_password: string }) =>
-		post<void>('/auth/reset-password', body)
+		post<void>('/auth/reset-password', body),
+	verifyEmail: (body: { token: string }) => post<void>('/auth/verify-email', body),
+	resendVerification: () => post<void>('/auth/resend-verification', {})
 };
 
 // --- Users ---
@@ -188,6 +194,7 @@ export const invitations = {
 // --- Types ---
 export interface User {
 	id: string; email: string; name: string; is_instance_admin: boolean;
+	email_verified_at?: string;
 	created_at: string; updated_at: string; archived_at?: string;
 }
 export interface Workspace {

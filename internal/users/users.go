@@ -25,14 +25,15 @@ var (
 )
 
 type User struct {
-	ID              string     `db:"id"               json:"id"`
-	Email           string     `db:"email"            json:"email"`
-	Name            string     `db:"name"             json:"name"`
+	ID              string     `db:"id"                json:"id"`
+	Email           string     `db:"email"             json:"email"`
+	Name            string     `db:"name"              json:"name"`
 	IsInstanceAdmin bool       `db:"is_instance_admin" json:"is_instance_admin"`
-	CreatedAt       time.Time  `db:"created_at"       json:"created_at"`
-	UpdatedAt       time.Time  `db:"updated_at"       json:"updated_at"`
-	ArchivedAt      *time.Time `db:"archived_at"      json:"archived_at,omitempty"`
-	PasswordHash    string     `db:"password_hash"    json:"-"`
+	EmailVerifiedAt *time.Time `db:"email_verified_at" json:"email_verified_at,omitempty"`
+	CreatedAt       time.Time  `db:"created_at"        json:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at"        json:"updated_at"`
+	ArchivedAt      *time.Time `db:"archived_at"       json:"archived_at,omitempty"`
+	PasswordHash    string     `db:"password_hash"     json:"-"`
 }
 
 type CreateUserParams struct {

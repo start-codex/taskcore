@@ -4,6 +4,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = () => {
-	redirect(302, '/settings/preferences');
+export const load: PageLoad = ({ params }) => {
+	redirect(302, `/${params.workspace}/settings/preferences`);
 };

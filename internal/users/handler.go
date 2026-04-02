@@ -7,11 +7,14 @@ package users
 
 import (
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/tookly/internal/authz"
+	"github.com/start-codex/tookly/internal/email"
 	"github.com/start-codex/tookly/internal/respond"
 	"github.com/start-codex/tookly/internal/sessions"
 )
@@ -82,6 +85,10 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
+
+		// Send verification email if required (inline to avoid import cycle)
+		TrySendVerificationEmail(r, db, user.ID, user.Email)
+
 		respond.JSON(w, http.StatusCreated, user)
 	}
 }
@@ -142,7 +149,18 @@ func handleMe(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
-		respond.JSON(w, http.StatusOK, map[string]any{"authenticated": true, "user": user})
+		// Check if email verification is required (inline to avoid import cycle with instance)
+		verificationRequired := false
+		var reqVal string
+		if err := db.GetContext(r.Context(), &reqVal,
+			`SELECT value FROM instance_config WHERE key = 'email_verification_required'`); err == nil {
+			verificationRequired = reqVal == "true"
+		}
+		respond.JSON(w, http.StatusOK, map[string]any{
+			"authenticated":               true,
+			"user":                         user,
+			"email_verification_required":  verificationRequired,
+		})
 	}
 }
 
@@ -211,4 +229,66 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 		}
 		respond.JSON(w, http.StatusOK, user)
 	}
+}
+
+// TrySendVerificationEmail checks if email verification is required and sends
+// the verification email. Errors are logged but never fail the caller.
+func TrySendVerificationEmail(r *http.Request, db *sqlx.DB, userID, userEmail string) {
+	ctx := r.Context()
+	var reqVal string
+	if err := db.GetContext(ctx, &reqVal,
+		`SELECT value FROM instance_config WHERE key = 'email_verification_required'`); err != nil {
+		return
+	}
+	if reqVal != "true" {
+		return
+	}
+
+	rawToken, err := sessions.GenerateToken()
+	if err != nil {
+		slog.Error("verification token generation failed", "error", err)
+		return
+	}
+	tokenHash := sessions.HashToken(rawToken)
+	if _, err = db.ExecContext(ctx,
+		`INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, NOW() + INTERVAL '24 hours')`,
+		userID, tokenHash); err != nil {
+		slog.Error("verification token insert failed", "error", err)
+		return
+	}
+
+	baseURL := ""
+	_ = db.GetContext(ctx, &baseURL, `SELECT value FROM instance_config WHERE key = 'base_url'`)
+	if baseURL == "" {
+		baseURL = r.Header.Get("Origin")
+	}
+	if baseURL == "" {
+		proto := r.Header.Get("X-Forwarded-Proto")
+		if proto == "" {
+			proto = "http"
+		}
+		baseURL = fmt.Sprintf("%s://%s", proto, r.Host)
+	}
+
+	body, err := email.RenderTemplate("email_verification", struct{ VerifyURL string }{
+		fmt.Sprintf("%s/verify-email?token=%s", baseURL, rawToken),
+	})
+	if err != nil {
+		slog.Error("verification email render failed", "error", err)
+		return
+	}
+
+	var smtpHost, smtpPortStr, smtpFrom, smtpUser, smtpPass string
+	_ = db.GetContext(ctx, &smtpHost, `SELECT value FROM instance_config WHERE key = 'smtp_host'`)
+	_ = db.GetContext(ctx, &smtpPortStr, `SELECT value FROM instance_config WHERE key = 'smtp_port'`)
+	_ = db.GetContext(ctx, &smtpFrom, `SELECT value FROM instance_config WHERE key = 'smtp_from'`)
+	_ = db.GetContext(ctx, &smtpUser, `SELECT value FROM instance_config WHERE key = 'smtp_username'`)
+	_ = db.GetContext(ctx, &smtpPass, `SELECT value FROM instance_config WHERE key = 'smtp_password'`)
+	if smtpHost == "" {
+		return
+	}
+	port := 587
+	fmt.Sscanf(smtpPortStr, "%d", &port)
+	_ = email.Send(&email.SMTPConfig{Host: smtpHost, Port: port, From: smtpFrom, Username: smtpUser, Password: smtpPass},
+		email.Message{To: userEmail, Subject: "Verify your Tookly email", Body: body})
 }

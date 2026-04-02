@@ -11,6 +11,10 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added optional email verification: admin toggle, verification banner, verify-email page, resend endpoint
+- Added `email_verified_at` to users; bootstrap admin is pre-verified
+- Added `email_verification_required` in `/auth/me` response for frontend
+- Added admin verification settings page at `/admin/verification`
 - Added invitation management page in workspace settings (admin-only: invite, list, resend, revoke)
 - Added invitation acceptance page at `/invitations/accept` (authenticated accept, new user registration, email mismatch guard)
 - Added `next` param support in login form for post-login redirect

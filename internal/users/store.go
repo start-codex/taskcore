@@ -15,7 +15,7 @@ import (
 	"github.com/start-codex/tookly/internal/pgutil"
 )
 
-const userCols = `id, email, name, is_instance_admin, created_at, updated_at, archived_at`
+const userCols = `id, email, name, is_instance_admin, email_verified_at, created_at, updated_at, archived_at`
 
 func createUser(ctx context.Context, db *sqlx.DB, params CreateUserParams) (User, error) {
 	hash, err := hashPassword(params.Password)
@@ -45,8 +45,8 @@ func createInstanceAdminTx(ctx context.Context, tx *sqlx.Tx, params CreateUserPa
 	}
 	var user User
 	err = tx.QueryRowxContext(ctx,
-		`INSERT INTO app_users (email, name, password_hash, is_instance_admin)
-		 VALUES ($1, $2, $3, true)
+		`INSERT INTO app_users (email, name, password_hash, is_instance_admin, email_verified_at)
+		 VALUES ($1, $2, $3, true, NOW())
 		 RETURNING `+userCols,
 		params.Email, params.Name, hash,
 	).StructScan(&user)

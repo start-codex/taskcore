@@ -10,6 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/tookly/internal/boards"
+	"github.com/start-codex/tookly/internal/emailverification"
 	"github.com/start-codex/tookly/internal/instance"
 	"github.com/start-codex/tookly/internal/invitations"
 	"github.com/start-codex/tookly/internal/issues"
@@ -27,6 +28,7 @@ func newAPIHandler(db *sqlx.DB) http.Handler {
 	instance.RegisterRoutes(api, db)
 	users.RegisterRoutes(api, db)
 	passwordreset.RegisterRoutes(api, db)
+	emailverification.RegisterRoutes(api, db)
 	workspaces.RegisterRoutes(api, db)
 	invitations.RegisterRoutes(api, db)
 	projects.RegisterRoutes(api, db)
