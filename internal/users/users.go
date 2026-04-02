@@ -30,10 +30,51 @@ type User struct {
 	Name            string     `db:"name"              json:"name"`
 	IsInstanceAdmin bool       `db:"is_instance_admin" json:"is_instance_admin"`
 	EmailVerifiedAt *time.Time `db:"email_verified_at" json:"email_verified_at,omitempty"`
+	HasPassword     bool       `db:"-"                 json:"has_password"`
 	CreatedAt       time.Time  `db:"created_at"        json:"created_at"`
 	UpdatedAt       time.Time  `db:"updated_at"        json:"updated_at"`
 	ArchivedAt      *time.Time `db:"archived_at"       json:"archived_at,omitempty"`
 	PasswordHash    string     `db:"password_hash"     json:"-"`
+}
+
+// fillDerived sets computed fields that don't come from the DB directly.
+func (u *User) fillDerived() {
+	u.HasPassword = u.PasswordHash != ""
+}
+
+type CreateOIDCUserParams struct {
+	Email string
+	Name  string
+}
+
+func (p CreateOIDCUserParams) Validate() error {
+	if p.Name == "" {
+		return errors.New("name is required")
+	}
+	if !strings.Contains(p.Email, "@") || p.Email == "" {
+		return errors.New("email is required and must contain @")
+	}
+	return nil
+}
+
+func CreateOIDCUser(ctx context.Context, db *sqlx.DB, params CreateOIDCUserParams) (User, error) {
+	if db == nil {
+		return User{}, errors.New("db is required")
+	}
+	if err := params.Validate(); err != nil {
+		return User{}, err
+	}
+	return createOIDCUser(ctx, db, params)
+}
+
+func CreateOIDCUserTx(ctx context.Context, tx *sqlx.Tx, params CreateOIDCUserParams) (User, error) {
+	if tx == nil {
+		return User{}, errors.New("tx is required")
+	}
+	if err := params.Validate(); err != nil {
+		return User{}, err
+	}
+	return createOIDCUserTx(ctx, tx, params)
 }
 
 type CreateUserParams struct {
@@ -112,6 +153,10 @@ func ChangePassword(ctx context.Context, db *sqlx.DB, userID, currentPassword, n
 	hash, err := getPasswordHash(ctx, db, userID)
 	if err != nil {
 		return err
+	}
+	// OIDC-only users have no password — cannot change via this flow
+	if hash == "" {
+		return ErrInvalidCredentials
 	}
 	ok, err := verifyPassword(hash, currentPassword)
 	if err != nil {

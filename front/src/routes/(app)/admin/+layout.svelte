@@ -3,6 +3,7 @@
 
 <script lang="ts">
 	import { page } from '$app/state';
+	import KeyIcon from '@lucide/svelte/icons/key';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 	import * as m from '$lib/paraglide/messages';
@@ -14,7 +15,8 @@
 		i18n.locale;
 		return [
 			{ href: '/admin/smtp', label: m.admin_smtp_title(), icon: MailIcon },
-			{ href: '/admin/verification', label: m.admin_verification_title(), icon: ShieldCheckIcon }
+			{ href: '/admin/verification', label: m.admin_verification_title(), icon: ShieldCheckIcon },
+			{ href: '/admin/oidc', label: m.admin_oidc_title(), icon: KeyIcon }
 		];
 	});
 

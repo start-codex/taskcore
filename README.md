@@ -51,11 +51,12 @@ What is shipped today:
 - Change password with session invalidation on other devices.
 - Instance admin settings page for SMTP configuration.
 - SMTP email delivery with Mailpit for local development.
+- OIDC/SSO login with external identity providers (Google, Keycloak, etc.), admin CRUD, JIT provisioning.
 - Local email/password authentication with server-side sessions.
 - Workspace and project membership enforcement with admin/owner roles.
 - Internationalization: English and Spanish.
 
-Not in the current baseline yet: SMTP delivery, password reset, user invitations, SSO/OIDC, or a first-install global admin bootstrap flow.
+Not in the current baseline yet: issue hierarchy, sprints, backlog, project pages, or automation.
 
 See [docs/05-roadmap.md](docs/05-roadmap.md) for what is in progress and planned.
 
@@ -73,7 +74,7 @@ See [docs/05-roadmap.md](docs/05-roadmap.md) for the full phased roadmap.
 Summary:
 - **Phase 0 — Foundation** `[shipped]` — core backend, domains, templates, i18n.
 - **Phase 1 — MVP hardening** `[shipped]` — full auth, membership enforcement, board UI, issue detail, board filters.
-- **Phase 1.5 — Identity, onboarding, and instance admin** `[planned]` — SMTP, password reset, invitations, SSO/OIDC, first-install bootstrap.
+- **Phase 1.5 — Identity, onboarding, and instance admin** `[shipped]` — SMTP, password reset, invitations, SSO/OIDC, first-install bootstrap.
 - **Phase 2 — Software workflow depth** `[planned]` — issue hierarchy, sprints, backlog, planning board.
 - **Phase 3 — Documentation-led planning** `[planned]` — project pages, decision records, doc↔work item links.
 - **Phase 4 — Cross-industry templates** `[planned]` — workflow presets for HR, legal, marketing, sales, and more.

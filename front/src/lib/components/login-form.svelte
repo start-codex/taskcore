@@ -16,10 +16,15 @@
 	import { cn } from '$lib/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { signIn } from '$lib/stores/auth';
+	import type { OIDCPublicProvider } from '$lib/api';
 	import * as m from '$lib/paraglide/messages';
 	import { i18n } from '$lib/i18n.svelte';
 
-	let { class: className, ...restProps }: HTMLAttributes<HTMLDivElement> = $props();
+	let {
+		class: className,
+		providers = [],
+		...restProps
+	}: HTMLAttributes<HTMLDivElement> & { providers?: OIDCPublicProvider[] } = $props();
 
 	const id = $props.id();
 
@@ -27,6 +32,8 @@
 	let password = $state('');
 	let errorMessage = $state('');
 	let loading = $state(false);
+
+	const next = $derived(page.url.searchParams.get('next') || '/');
 
 	const t = $derived.by(() => {
 		i18n.locale;
@@ -39,7 +46,9 @@
 			signingIn: m.login_signing_in(),
 			noAccount: m.login_no_account(),
 			terms: m.login_terms(),
-			forgotPassword: m.login_forgot_password()
+			forgotPassword: m.login_forgot_password(),
+			signInWith: m.login_sign_in_with(),
+			orContinueWith: m.login_or_continue_with()
 		};
 	});
 
@@ -49,13 +58,16 @@
 		loading = true;
 		try {
 			await signIn(email, password);
-			const next = page.url.searchParams.get('next');
-			goto(next || '/');
+			goto(next);
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : t.submit;
 		} finally {
 			loading = false;
 		}
+	}
+
+	function startOIDC(slug: string) {
+		window.location.href = `/api/auth/oidc/${slug}?next=${encodeURIComponent(next)}`;
 	}
 </script>
 
@@ -66,6 +78,18 @@
 			<Card.Description>{t.signIn}</Card.Description>
 		</Card.Header>
 		<Card.Content>
+			{#if providers.length > 0}
+				<div class="flex flex-col gap-2 mb-4">
+					{#each providers as provider}
+						<Button variant="outline" class="w-full" onclick={() => startOIDC(provider.slug)}>
+							{t.signInWith} {provider.name}
+						</Button>
+					{/each}
+				</div>
+				<div class="relative mb-4 text-center text-sm after:absolute after:inset-0 after:top-1/2 after:border-t after:border-border">
+					<span class="relative z-10 bg-card px-2 text-muted-foreground">{t.orContinueWith}</span>
+				</div>
+			{/if}
 			<form onsubmit={handleSubmit}>
 				<FieldGroup>
 					<Field>

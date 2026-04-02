@@ -69,6 +69,7 @@ var staticPublicRoutes = []struct{ method, path string }{
 	{"GET", "/invitations/accept"},
 	{"POST", "/invitations/accept"},
 	{"POST", "/auth/verify-email"},
+	{"GET", "/auth/oidc/providers"},
 }
 
 // isPublicRoute returns:
@@ -80,6 +81,10 @@ func isPublicRoute(ctx context.Context, method, path string, db *sqlx.DB) (publi
 		if method == route.method && path == route.path {
 			return true, false, nil
 		}
+	}
+	// OIDC flow routes are public (start + callback)
+	if method == "GET" && strings.HasPrefix(path, "/auth/oidc/") && path != "/auth/oidc/providers" {
+		return true, false, nil
 	}
 	// POST /users is public only after the instance is initialized.
 	// Before bootstrap, user creation is blocked (409).

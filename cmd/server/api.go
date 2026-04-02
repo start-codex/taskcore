@@ -12,6 +12,7 @@ import (
 	"github.com/start-codex/tookly/internal/boards"
 	"github.com/start-codex/tookly/internal/emailverification"
 	"github.com/start-codex/tookly/internal/instance"
+	"github.com/start-codex/tookly/internal/oidc"
 	"github.com/start-codex/tookly/internal/invitations"
 	"github.com/start-codex/tookly/internal/issues"
 	"github.com/start-codex/tookly/internal/passwordreset"
@@ -29,6 +30,7 @@ func newAPIHandler(db *sqlx.DB) http.Handler {
 	users.RegisterRoutes(api, db)
 	passwordreset.RegisterRoutes(api, db)
 	emailverification.RegisterRoutes(api, db)
+	oidc.RegisterRoutes(api, db)
 	workspaces.RegisterRoutes(api, db)
 	invitations.RegisterRoutes(api, db)
 	projects.RegisterRoutes(api, db)

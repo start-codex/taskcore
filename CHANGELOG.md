@@ -11,6 +11,13 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added OIDC/SSO login: admin CRUD for providers, dynamic login buttons, authorization code flow with nonce validation
+- Added `oidc_providers` and `user_identities` tables (migration 0010)
+- Added `internal/oidc` package with provider management, OIDC flow, and account linking/JIT provisioning
+- Added `has_password` derived field to User for OIDC-only user detection
+- Added admin OIDC settings page at `/admin/oidc` with provider create/edit/delete
+- Added OIDC error banners on login page (`oidc_denied`, `oidc_no_account`, `account_archived`)
+- Added account settings: hide change-password for OIDC-only users, show link to password reset
 - Added optional email verification: admin toggle, verification banner, verify-email page, resend endpoint
 - Added `email_verified_at` to users; bootstrap admin is pre-verified
 - Added `email_verification_required` in `/auth/me` response for frontend

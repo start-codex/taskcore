@@ -55,6 +55,14 @@ export const instance = {
 		get: () => get<{ required: boolean }>('/instance/verification'),
 		save: (body: { required: boolean }) => post<{ status: string }>('/instance/verification', body)
 	},
+	oidc: {
+		list: () => get<OIDCProvider[]>('/instance/oidc/providers'),
+		create: (body: Omit<OIDCProvider, 'id' | 'created_at' | 'updated_at'> & { client_secret: string }) =>
+			post<OIDCProvider>('/instance/oidc/providers', body),
+		update: (id: string, body: Partial<OIDCProvider> & { client_secret?: string }) =>
+			put<OIDCProvider>(`/instance/oidc/providers/${id}`, body),
+		delete: (id: string) => del(`/instance/oidc/providers/${id}`)
+	},
 	smtp: {
 		get: () => get<SMTPConfig>('/instance/smtp'),
 		save: (body: SMTPConfig) => post<{ status: string }>('/instance/smtp', body),
@@ -73,7 +81,8 @@ export const auth = {
 	resetPassword: (body: { token: string; new_password: string }) =>
 		post<void>('/auth/reset-password', body),
 	verifyEmail: (body: { token: string }) => post<void>('/auth/verify-email', body),
-	resendVerification: () => post<void>('/auth/resend-verification', {})
+	resendVerification: () => post<void>('/auth/resend-verification', {}),
+	oidcProviders: () => get<OIDCPublicProvider[]>('/auth/oidc/providers')
 };
 
 // --- Users ---
@@ -194,8 +203,16 @@ export const invitations = {
 // --- Types ---
 export interface User {
 	id: string; email: string; name: string; is_instance_admin: boolean;
-	email_verified_at?: string;
+	email_verified_at?: string; has_password: boolean;
 	created_at: string; updated_at: string; archived_at?: string;
+}
+export interface OIDCPublicProvider {
+	id: string; name: string; slug: string;
+}
+export interface OIDCProvider extends OIDCPublicProvider {
+	issuer_url: string; client_id: string; redirect_uri: string;
+	scopes: string; auto_register: boolean; enabled: boolean;
+	created_at: string; updated_at: string;
 }
 export interface Workspace {
 	id: string; name: string; slug: string;

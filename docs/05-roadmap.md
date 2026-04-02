@@ -59,11 +59,11 @@ Close the gap between what the backend supports and what the UI delivers. Delive
 
 ---
 
-## Phase 1.5 — Identity, onboarding, and instance admin `[in progress]`
+## Phase 1.5 — Identity, onboarding, and instance admin `[shipped]`
 
 Make self-hosted deployments operable beyond basic local login. This phase covers the missing identity and bootstrap capabilities that sit between MVP auth and broader platform workflows.
 
-**Identity, onboarding, and instance admin** (PRs #25–#35 `[shipped]`)
+**Identity, onboarding, and instance admin** (PRs #25–#36 `[shipped]`)
 - `instance_config` key-value table for instance-level settings.
 - `internal/instance` package: `GetConfig`, `SetConfig`, `IsInitialized`, `Bootstrap`.
 - `POST /instance/bootstrap`: atomic first-install flow creates global admin.

@@ -15,7 +15,7 @@ import (
 	"github.com/start-codex/tookly/internal/pgutil"
 )
 
-const userCols = `id, email, name, is_instance_admin, email_verified_at, created_at, updated_at, archived_at`
+const userCols = `id, email, name, is_instance_admin, email_verified_at, created_at, updated_at, archived_at, password_hash`
 
 func createUser(ctx context.Context, db *sqlx.DB, params CreateUserParams) (User, error) {
 	hash, err := hashPassword(params.Password)
@@ -35,6 +35,8 @@ func createUser(ctx context.Context, db *sqlx.DB, params CreateUserParams) (User
 		}
 		return User{}, fmt.Errorf("insert user: %w", err)
 	}
+	user.fillDerived()
+	user.PasswordHash = ""
 	return user, nil
 }
 
@@ -56,6 +58,8 @@ func createInstanceAdminTx(ctx context.Context, tx *sqlx.Tx, params CreateUserPa
 		}
 		return User{}, fmt.Errorf("insert instance admin: %w", err)
 	}
+	user.fillDerived()
+	user.PasswordHash = ""
 	return user, nil
 }
 
@@ -71,6 +75,8 @@ func getUser(ctx context.Context, db *sqlx.DB, id string) (User, error) {
 		}
 		return User{}, fmt.Errorf("get user: %w", err)
 	}
+	user.fillDerived()
+	user.PasswordHash = ""
 	return user, nil
 }
 
@@ -86,13 +92,15 @@ func getUserByEmail(ctx context.Context, db *sqlx.DB, email string) (User, error
 		}
 		return User{}, fmt.Errorf("get user by email: %w", err)
 	}
+	user.fillDerived()
+	user.PasswordHash = ""
 	return user, nil
 }
 
 func authenticateUser(ctx context.Context, db *sqlx.DB, email, password string) (User, error) {
 	var user User
 	err := db.GetContext(ctx, &user,
-		`SELECT `+userCols+`, password_hash FROM app_users WHERE email = $1`,
+		`SELECT `+userCols+` FROM app_users WHERE email = $1`,
 		email,
 	)
 	if err != nil {
@@ -101,6 +109,10 @@ func authenticateUser(ctx context.Context, db *sqlx.DB, email, password string) 
 		}
 		return User{}, fmt.Errorf("get user for auth: %w", err)
 	}
+	// OIDC-only users have no password hash — treat as invalid credentials
+	if user.PasswordHash == "" {
+		return User{}, ErrInvalidCredentials
+	}
 	ok, err := verifyPassword(user.PasswordHash, password)
 	if err != nil {
 		return User{}, fmt.Errorf("verify password: %w", err)
@@ -108,6 +120,45 @@ func authenticateUser(ctx context.Context, db *sqlx.DB, email, password string) 
 	if !ok {
 		return User{}, ErrInvalidCredentials
 	}
+	user.fillDerived()
+	user.PasswordHash = ""
+	return user, nil
+}
+
+func createOIDCUser(ctx context.Context, db *sqlx.DB, params CreateOIDCUserParams) (User, error) {
+	var user User
+	err := db.QueryRowxContext(ctx,
+		`INSERT INTO app_users (email, name, password_hash, email_verified_at)
+		 VALUES ($1, $2, '', NOW())
+		 RETURNING `+userCols,
+		params.Email, params.Name,
+	).StructScan(&user)
+	if err != nil {
+		if pgutil.IsUniqueViolation(err) {
+			return User{}, ErrDuplicateEmail
+		}
+		return User{}, fmt.Errorf("insert oidc user: %w", err)
+	}
+	user.fillDerived()
+	user.PasswordHash = ""
+	return user, nil
+}
+
+func createOIDCUserTx(ctx context.Context, tx *sqlx.Tx, params CreateOIDCUserParams) (User, error) {
+	var user User
+	err := tx.QueryRowxContext(ctx,
+		`INSERT INTO app_users (email, name, password_hash, email_verified_at)
+		 VALUES ($1, $2, '', NOW())
+		 RETURNING `+userCols,
+		params.Email, params.Name,
+	).StructScan(&user)
+	if err != nil {
+		if pgutil.IsUniqueViolation(err) {
+			return User{}, ErrDuplicateEmail
+		}
+		return User{}, fmt.Errorf("insert oidc user tx: %w", err)
+	}
+	user.fillDerived()
 	user.PasswordHash = ""
 	return user, nil
 }
