@@ -11,6 +11,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added invitation management page in workspace settings (admin-only: invite, list, resend, revoke)
+- Added invitation acceptance page at `/invitations/accept` (authenticated accept, new user registration, email mismatch guard)
+- Added `next` param support in login form for post-login redirect
 - Added workspace invitations: create, list, revoke, resend, accept (authenticated or new user registration)
 - Added `internal/invitations` package with token-based invitation flow (SHA-256, 7-day TTL)
 - Added `GET/POST /invitations/accept` public endpoints for invitation acceptance

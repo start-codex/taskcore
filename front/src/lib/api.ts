@@ -170,6 +170,21 @@ export const issues = {
 		post<void>(`/projects/${projectID}/issues/${issueID}/move`, body)
 };
 
+// --- Invitations ---
+export const invitations = {
+	create: (workspaceID: string, body: { email: string; role: string }) =>
+		post<Invitation>(`/workspaces/${workspaceID}/invitations`, body),
+	listPending: (workspaceID: string) =>
+		get<Invitation[]>(`/workspaces/${workspaceID}/invitations`),
+	revoke: (invitationID: string) => del(`/invitations/${invitationID}`),
+	resend: (invitationID: string) =>
+		post<{ status: string }>(`/invitations/${invitationID}/resend`, {}),
+	getAccept: (token: string) =>
+		get<InvitationAcceptInfo>(`/invitations/accept?token=${token}`),
+	accept: (body: { token: string; email?: string; name?: string; password?: string }) =>
+		post<{ status: string; workspace_slug: string }>('/invitations/accept', body)
+};
+
 // --- Types ---
 export interface User {
 	id: string; email: string; name: string; is_instance_admin: boolean;
@@ -222,4 +237,12 @@ export interface CreateIssueBody {
 export interface UpdateIssueBody {
 	title: string; description?: string; priority: string;
 	assignee_id?: string | null; due_date?: string | null;
+}
+export interface Invitation {
+	id: string; workspace_id: string; email: string; role: string;
+	invited_by: string; status: string; expires_at: string;
+	accepted_at?: string; created_at: string;
+}
+export interface InvitationAcceptInfo {
+	email: string; role: string; workspace_name: string; inviter_name: string;
 }

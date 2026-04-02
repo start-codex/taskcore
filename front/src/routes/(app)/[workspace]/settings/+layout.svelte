@@ -3,23 +3,33 @@
 
 <script lang="ts">
 	import { page } from '$app/state';
+	import type { LayoutData } from './$types';
 	import SlidersIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import MailPlusIcon from '@lucide/svelte/icons/mail-plus';
 	import * as m from '$lib/paraglide/messages';
 	import { i18n } from '$lib/i18n.svelte';
 
-	let { children } = $props();
+	let { children, data }: { children: any; data: LayoutData } = $props();
 
 	const ws = $derived(page.params.workspace);
 
 	const navItems = $derived.by(() => {
 		i18n.locale;
-		return [
+		const items = [
 			{ href: `/${ws}/settings/preferences`, label: m.settings_nav_preferences(), icon: SlidersIcon },
 			{ href: `/${ws}/settings/users`,       label: m.settings_nav_users(),       icon: UsersIcon  },
 			{ href: `/${ws}/settings/account`,     label: m.settings_nav_account(),     icon: UserIcon   }
 		];
+		if (data.canManageInvitations) {
+			items.splice(2, 0, {
+				href: `/${ws}/settings/invitations`,
+				label: m.settings_nav_invitations(),
+				icon: MailPlusIcon
+			});
+		}
+		return items;
 	});
 
 	const title = $derived.by(() => { i18n.locale; return m.settings_title(); });

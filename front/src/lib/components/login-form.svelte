@@ -3,6 +3,7 @@
 
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import {
@@ -48,7 +49,8 @@
 		loading = true;
 		try {
 			await signIn(email, password);
-			goto('/');
+			const next = page.url.searchParams.get('next');
+			goto(next || '/');
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : t.submit;
 		} finally {
